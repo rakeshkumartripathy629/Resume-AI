@@ -4,6 +4,7 @@ import builderReducer from '../features/builder/builderSlice'
 import coinsReducer from '../features/coins/coinsSlice'
 import interviewReducer from '../features/interview/interviewSlice'
 import interviewListReducer from '../features/interview/interviewListSlice'
+import resumeListReducer from '../features/resumes/resumeListSlice'
 import roadmapReducer from '../features/roadmap/roadmapSlice'
 import billingReducer from '../features/billing/billingSlice'
 
@@ -14,6 +15,7 @@ export const store = configureStore({
     coins: coinsReducer,
     interview: interviewReducer,
     interviewList: interviewListReducer,
+    resumeList: resumeListReducer,
     roadmap: roadmapReducer,
     billing: billingReducer,
   },
