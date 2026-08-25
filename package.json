@@ -3,7 +3,18 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently -c blue,green,yellow,magenta,cyan,red,white -n gateway,auth,agent,interview,roadmap,billing,client \"cd gateway && npm run dev\" \"cd services/auth-service && npm run dev\" \"cd services/agent-service && npm run dev\" \"cd services/interview-service && npm run dev\" \"cd services/roadmap-service && npm run dev\" \"cd services/billing-service && npm run dev\" \"cd client && npm run dev\""
+    "dev": "concurrently -c blue,green,yellow,magenta,cyan,red,white -n gateway,auth,agent,interview,roadmap,billing,client \"cd gateway && npm run dev\" \"cd services/auth-service && npm run dev\" \"cd services/agent-service && npm run dev\" \"cd services/interview-service && npm run dev\" \"cd services/roadmap-service && npm run dev\" \"cd services/billing-service && npm run dev\" \"cd client && npm run dev\"",
+    "dev:watchdog": "node scripts/watchdog.mjs",
+    "dev:services": "concurrently -c blue,green,yellow,magenta,cyan,red -n gateway,auth,agent,interview,roadmap,billing \"cd gateway && npm run dev\" \"cd services/auth-service && npm run dev\" \"cd services/agent-service && npm run dev\" \"cd services/interview-service && npm run dev\" \"cd services/roadmap-service && npm run dev\" \"cd services/billing-service && npm run dev\"",
+    "dev:client": "cd client && npm run dev",
+    "stop": "node -e \"const{execSync}=require('child_process');try{execSync('taskkill /F /IM node.exe /T',{stdio:'ignore'})}catch{}\"",
+    "restart:gateway": "cd gateway && npm run dev",
+    "restart:auth": "cd services/auth-service && npm run dev",
+    "restart:agent": "cd services/agent-service && npm run dev",
+    "restart:interview": "cd services/interview-service && npm run dev",
+    "restart:roadmap": "cd services/roadmap-service && npm run dev",
+    "restart:billing": "cd services/billing-service && npm run dev",
+    "health": "node -e \"const http=require('http');const ports=[4000,4001,4002,4003,4004,4005];Promise.all(ports.map(p=>new Promise(r=>http.get('http://localhost:'+p+'/health',{timeout:3000},res=>{let d='';res.on('data',c=>d+=c);res.on('end',()=>r(p+': OK ('+res.statusCode+')'))}).on('error',()=>r(p+': DOWN'))))).then(r=>console.log(r.join('\\n')))\""
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
