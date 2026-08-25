@@ -108,14 +108,15 @@ export async function generateResumeDocx(
 ): Promise<void> {
   const paras: Paragraph[] = []
 
-  // Header
+  // Header — safe access
+  const contact = resume.contact ?? { fullName: 'Resume', email: '', phone: '', location: '', linkedin: '', portfolio: '' }
   paras.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { after: 60 },
       children: [
         new TextRun({
-          text: resume.contact.fullName,
+          text: contact.fullName || 'Resume',
           bold: true,
           size: 32,
           font: 'Calibri',
@@ -124,7 +125,7 @@ export async function generateResumeDocx(
       ],
     })
   )
-  const contactLine = [resume.contact.email, resume.contact.phone, resume.contact.location]
+  const contactLine = [contact.email, contact.phone, contact.location]
     .filter(Boolean)
     .join('  |  ')
   paras.push(
@@ -133,7 +134,7 @@ export async function generateResumeDocx(
       spacing: { after: 200 },
       children: [
         new TextRun({
-          text: contactLine,
+          text: contactLine || ' ',
           size: 18,
           font: 'Calibri',
           color: '64748b',
@@ -205,7 +206,7 @@ export async function generateResumeDocx(
   }
 
   // Projects
-  if (resume.projects.length > 0) {
+  if (resume.projects && resume.projects.length > 0) {
     paras.push(sectionHeading('PROJECTS'))
     for (const proj of resume.projects) {
       paras.push(
@@ -243,7 +244,7 @@ export async function generateResumeDocx(
   }
 
   // Certifications
-  if (resume.certifications.length > 0) {
+  if (resume.certifications && resume.certifications.length > 0) {
     paras.push(sectionHeading('CERTIFICATIONS'))
     for (const cert of resume.certifications) {
       paras.push(bodyText(`${cert.name}  —  ${cert.issuer}`))
@@ -258,7 +259,7 @@ export async function generateResumeDocx(
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = filename ?? `${resume.contact.fullName.replace(/\s+/g, '_')}_Resume.docx`
+  a.download = filename ?? `${(contact.fullName || 'Resume').replace(/\s+/g, '_')}_Resume.docx`
   a.click()
   URL.revokeObjectURL(url)
 }

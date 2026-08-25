@@ -39,6 +39,15 @@ export async function scoreController(req: Request, res: Response): Promise<void
   try {
     result = await runResumeScoring(resumeText.trim(), jobDescription.trim());
   } catch (err) {
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        service: 'agent-service',
+        msg: 'Scoring failed',
+        uid,
+        message: err instanceof Error ? err.message : String(err),
+      })
+    );
     await refundCoins(uid, cost, 'refund_resume_score', { cause: 'scoring_failed' });
     throw err;
   }

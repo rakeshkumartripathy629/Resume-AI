@@ -53,11 +53,13 @@ export function TailorPage() {
     setActiveTab('preview')
   }
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     if (!editedResume) return
     setDownloading('pdf')
     try {
-      generateResumePdf(editedResume)
+      await generateResumePdf(editedResume)
+    } catch (err) {
+      console.error('PDF generation failed:', err)
     } finally {
       setTimeout(() => setDownloading(null), 1000)
     }
@@ -68,6 +70,8 @@ export function TailorPage() {
     setDownloading('docx')
     try {
       await generateResumeDocx(editedResume)
+    } catch (err) {
+      console.error('DOCX generation failed:', err)
     } finally {
       setTimeout(() => setDownloading(null), 1000)
     }

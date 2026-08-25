@@ -1,16 +1,23 @@
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph';
-import { getLlm } from './llm';
-import { JobRequirementsSchema, type JobRequirements } from './schemas';
+import { extractAlgorithmicRequirements, extractAlgorithmicKeywords } from './graph';
 import {
   CompactTailoredResumeSchema,
-  KeywordExtractionSchema,
   type CompactTailoredResume,
-  type KeywordExtraction,
   type ATSAnalysis,
   computeAtsAnalysis,
   injectMissingKeywords,
+  preserveOriginalData,
   compactToFull,
 } from './tailorSchemas';
+import type { JobRequirements } from './schemas';
+
+// ── Shared types ─────────────────────────────────────────────────────────────
+
+interface KeywordData {
+  mustIncludeKeywords: string[];
+  coreSkills: string[];
+  niceToHave: string[];
+}
 
 // ── Graph State ─────────────────────────────────────────────────────────────
 
@@ -21,7 +28,7 @@ const TailorGraphState = Annotation.Root({
     reducer: (_, b) => b,
     default: () => null,
   }),
-  keywordData: Annotation<KeywordExtraction | null>({
+  keywordData: Annotation<KeywordData | null>({
     reducer: (_, b) => b,
     default: () => null,
   }),
@@ -37,170 +44,402 @@ const TailorGraphState = Annotation.Root({
 
 type TailorState = typeof TailorGraphState.State;
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+// ── Algorithmic Resume Parser (text → CompactTailoredResume) ─────────────────
 
-async function withNodeRetry<T>(fn: () => Promise<T>, label: string, maxAttempts = 3): Promise<T> {
-  let lastError: unknown;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      return await fn();
-    } catch (err) {
-      lastError = err;
-      const msg = err instanceof Error ? err.message.toLowerCase() : '';
-      const isRateLimit = msg.includes('429') || msg.includes('rate limit') || msg.includes('tokens per minute');
-      if (isRateLimit && attempt < maxAttempts) {
-        const delay = 10000 * attempt;
-        console.warn(JSON.stringify({ level: 'warn', service: 'agent-service', msg: `${label} rate-limited (attempt ${attempt}/${maxAttempts}), retrying in ${delay}ms` }));
-        await sleep(delay);
-        continue;
+const SECTION_HEADERS = /^(summary|professional summary|objective|career objective|profile|about me|skills|technical skills|technologies|tech stack|tools|experience|work experience|employment|professional experience|projects|personal projects|education|academic|certifications|licenses|awards|references|interests)/i;
+
+function parseResumeText(text: string): CompactTailoredResume {
+  const lines = text.split('\n').map((l) => l.trim());
+  const lower = text.toLowerCase();
+
+  // Contact info
+  const emailMatch = text.match(/[\w.+-]+@[\w-]+\.[\w.]+/);
+  const phoneMatch = text.match(/[\+]?[\d\s\-\(\)]{7,15}/);
+  const linkedinMatch = text.match(/linkedin\.com\/in\/[\w-]+/i);
+  const portfolioMatch = text.match(/(?:portfolio|github\.com|gitlab\.com)\/[\w-]+/i);
+
+  // Name: first line that isn't email/phone/url/section header
+  let fullName = '';
+  for (const line of lines.slice(0, 5)) {
+    if (!line || line.includes('@') || line.match(/\d{6,}/) || line.startsWith('http') || line.length > 80) continue;
+    if (SECTION_HEADERS.test(line)) break;
+    if (line.split(' ').length <= 6) { fullName = line; break; }
+  }
+
+  // Location: line containing common city/state keywords
+  let location = '';
+  const locPatterns = /\b(bangalore|bengaluru|mumbai|delhi|hyderabad|pune|chennai|gurgaon|gurugram|noida|remote|india|usa|uk|canada|singapore|california|new york|london|toronto|berlin|san francisco|seattle|austin|boston|chicago)\b/i;
+  for (const line of lines.slice(0, 10)) {
+    if (locPatterns.test(line)) { location = line.slice(0, 60); break; }
+  }
+
+  // Split into sections
+  const sections: Record<string, string[]> = {};
+  let currentSection = '_preamble';
+  sections[currentSection] = [];
+
+  for (const line of lines) {
+    if (!line) continue;
+    if (SECTION_HEADERS.test(line) && line.length < 40) {
+      const key = line.toLowerCase().replace(/[:\s]+$/, '').trim();
+      currentSection = key;
+      if (!sections[currentSection]) sections[currentSection] = [];
+      continue;
+    }
+    sections[currentSection].push(line);
+  }
+
+  // Parse skills
+  const skillLines = [
+    ...(sections['skills'] ?? []),
+    ...(sections['technical skills'] ?? []),
+    ...(sections['technologies'] ?? []),
+    ...(sections['tech stack'] ?? []),
+    ...(sections['tools'] ?? []),
+  ];
+  const skills: string[] = [];
+  for (const sl of skillLines) {
+    const parts = sl.split(/[,|•·:;]/);
+    for (const p of parts) {
+      const cleaned = p.trim().replace(/^[-•*]\s*/, '');
+      if (cleaned.length > 1 && cleaned.length < 40 && !cleaned.match(/^\d/)) {
+        skills.push(cleaned);
       }
-      throw err;
     }
   }
-  throw lastError;
+
+  // Parse summary
+  const summaryLines = [
+    ...(sections['summary'] ?? []),
+    ...(sections['professional summary'] ?? []),
+    ...(sections['objective'] ?? []),
+    ...(sections['career objective'] ?? []),
+    ...(sections['profile'] ?? []),
+    ...(sections['about me'] ?? []),
+  ];
+  const summary = summaryLines.join(' ').slice(0, 300);
+
+  // Parse experience
+  const expLines = [
+    ...(sections['experience'] ?? []),
+    ...(sections['work experience'] ?? []),
+    ...(sections['employment'] ?? []),
+    ...(sections['professional experience'] ?? []),
+  ];
+  const experience = parseExperienceEntries(expLines);
+
+  // Parse education
+  const eduLines = [
+    ...(sections['education'] ?? []),
+    ...(sections['academic'] ?? []),
+  ];
+  const education = parseEducationEntries(eduLines);
+
+  // Parse projects
+  const projLines = sections['projects'] ?? sections['personal projects'] ?? [];
+  const projects = parseProjectEntries(projLines);
+
+  // Parse certifications
+  const certLines = sections['certifications'] ?? sections['licenses'] ?? [];
+  const certifications = parseCertEntries(certLines);
+
+  return {
+    fullName,
+    email: emailMatch?.[0] || '',
+    phone: phoneMatch?.[0]?.trim() || '',
+    location,
+    linkedin: linkedinMatch?.[0] || '',
+    portfolio: portfolioMatch?.[0] || '',
+    summary: summary || `Experienced professional with expertise in ${skills.slice(0, 3).join(', ')}.`,
+    skills: skills.length > 0 ? skills : extractSkillsFromFreeText(text),
+    experience,
+    education,
+    projects: (projects ?? []).length > 0 ? projects : undefined,
+    certifications: (certifications ?? []).length > 0 ? certifications : undefined,
+  };
 }
 
-// ── Node 1: Extract Requirements + Keywords ─────────────────────────────────
+const DATE_RANGE = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s*\d{4}\s*[-–—to]+\s*(?:present|current|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s*\d{4})\b/i;
+const DATE_ONLY = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s*\d{4}\b/i;
+const BULLET = /^\s*[-•*●]\s+/;
 
-async function extractRequirementsNode(
-  state: TailorState
-): Promise<Partial<TailorState>> {
-  const llm = getLlm();
+function parseExperienceEntries(lines: string[]): CompactTailoredResume['experience'] {
+  const entries: CompactTailoredResume['experience'] = [];
+  if (lines.length === 0) return entries;
 
-  // Two structured outputs from one LLM call — parse sequentially
-  const requirements = await withNodeRetry(async () => {
-    const reqLlm = llm.withStructuredOutput(JobRequirementsSchema);
-    return reqLlm.invoke([
-      ['system', 'Extract job requirements. Normalize tool names. Be precise.'],
-      ['human', state.jobDescription.slice(0, 2500)],
-    ]);
-  }, 'extract_requirements');
+  let currentRole = '';
+  let currentCompany = '';
+  let currentDates = '';
+  let currentBullets: string[] = [];
 
-  const keywordData = await withNodeRetry(async () => {
-    const kwLlm = llm.withStructuredOutput(KeywordExtractionSchema);
-    return kwLlm.invoke([
-      ['system', 'Extract ALL keywords from this job description that an ATS system would scan for. Be exhaustive.'],
-      ['human', state.jobDescription.slice(0, 2500)],
-    ]);
-  }, 'extract_keywords');
+  for (const line of lines) {
+    if (BULLET.test(line)) {
+      currentBullets.push(line.replace(BULLET, '').trim());
+      continue;
+    }
+    if (DATE_RANGE.test(line) || (DATE_ONLY.test(line) && line.length < 60)) {
+      // Save previous entry
+      if (currentRole || currentBullets.length > 0) {
+        entries.push({
+          role: currentRole || 'Software Developer',
+          company: currentCompany,
+          dates: currentDates,
+          bullets: currentBullets.slice(0, 4),
+        });
+      }
+      currentBullets = [];
+      currentDates = (line.match(DATE_RANGE) || line.match(DATE_ONLY))?.[0] || '';
+      // Everything before the date is role + company
+      const before = line.replace(DATE_RANGE, '').replace(DATE_ONLY, '').replace(/[|,–—]/, ' at ').trim();
+      const atMatch = before.match(/^(.+?)\s+at\s+(.+)$/i) || before.match(/^(.+?)\s*[|–—]\s*(.+)$/);
+      if (atMatch) {
+        currentRole = atMatch[1].trim();
+        currentCompany = atMatch[2].trim();
+      } else {
+        currentRole = before || 'Software Developer';
+        currentCompany = '';
+      }
+    } else if (line.length > 5 && line.length < 100 && !currentDates) {
+      // Could be a role/company header
+      const atMatch = line.match(/^(.+?)\s+at\s+(.+)$/i) || line.match(/^(.+?)\s*[|–—]\s*(.+)$/);
+      if (atMatch) {
+        if (currentRole || currentBullets.length > 0) {
+          entries.push({
+            role: currentRole || 'Software Developer',
+            company: currentCompany,
+            dates: currentDates,
+            bullets: currentBullets.slice(0, 4),
+          });
+          currentBullets = [];
+        }
+        currentRole = atMatch[1].trim();
+        currentCompany = atMatch[2].trim();
+      }
+    }
+  }
 
+  // Push last entry
+  if (currentRole || currentBullets.length > 0) {
+    entries.push({
+      role: currentRole || 'Software Developer',
+      company: currentCompany,
+      dates: currentDates,
+      bullets: currentBullets.slice(0, 4),
+    });
+  }
+
+  // If no experience parsed, create one from preamble or generic
+  if (entries.length === 0) {
+    entries.push({ role: 'Software Developer', company: '', dates: '', bullets: ['Contributed to software development projects'] });
+  }
+
+  return entries;
+}
+
+function parseEducationEntries(lines: string[]): CompactTailoredResume['education'] {
+  const entries: CompactTailoredResume['education'] = [];
+  if (lines.length === 0) return entries;
+
+  for (const line of lines) {
+    if (line.length < 5) continue;
+    const dateMatch = line.match(DATE_RANGE) || line.match(DATE_ONLY);
+    const date = dateMatch?.[0] || '';
+    const cleaned = line.replace(DATE_RANGE, '').replace(DATE_ONLY, '').replace(/[|,–—]/, ' at ').trim();
+
+    const degreeMatch = cleaned.match(/^(.+?)\s+(?:at|from)\s+(.+)$/i) || cleaned.match(/^(.+?)\s*[|–—]\s*(.+)$/);
+    if (degreeMatch) {
+      entries.push({
+        institution: degreeMatch[2].trim(),
+        degree: degreeMatch[1].trim(),
+        dates: date,
+      });
+    } else if (/\b(b\.?tech|m\.?tech|b\.?sc|m\.?sc|bachelor|master|mba|phd|degree|b\.?e\.?|m\.?e\.?)\b/i.test(cleaned)) {
+      entries.push({ institution: '', degree: cleaned, dates: date });
+    }
+  }
+
+  if (entries.length === 0) {
+    const text = lines.join(' ');
+    const degreeMatch = text.match(/\b(b\.?tech|m\.?tech|b\.?sc|m\.?sc|bachelor|master|mba|phd)\b/i);
+    entries.push({ institution: '', degree: degreeMatch?.[0] || 'Computer Science', dates: '' });
+  }
+
+  return entries;
+}
+
+function parseProjectEntries(lines: string[]): CompactTailoredResume['projects'] {
+  const entries: CompactTailoredResume['projects'] = [];
+  for (const line of lines) {
+    if (line.length < 5) continue;
+    const descMatch = line.match(/^(.+?)[:–—]\s*(.+)$/);
+    if (descMatch) {
+      entries.push({ name: descMatch[1].trim(), description: descMatch[2].trim().slice(0, 120), tech: [] });
+    }
+  }
+  return entries;
+}
+
+function parseCertEntries(lines: string[]): CompactTailoredResume['certifications'] {
+  const entries: CompactTailoredResume['certifications'] = [];
+  for (const line of lines) {
+    if (line.length < 5) continue;
+    const byMatch = line.match(/^(.+?)\s+(?:by|from|issued by)\s+(.+)$/i) || line.match(/^(.+?)\s*[|–—]\s*(.+)$/);
+    if (byMatch) {
+      entries.push({ name: byMatch[1].trim(), issuer: byMatch[2].trim() });
+    } else {
+      entries.push({ name: line, issuer: '' });
+    }
+  }
+  return entries;
+}
+
+function extractSkillsFromFreeText(text: string): string[] {
+  const lower = text.toLowerCase();
+  const ALL_SKILLS = [
+    'javascript','typescript','react','node.js','nodejs','python','java','c++','c#','go','golang','rust',
+    'ruby','php','swift','kotlin','sql','mongodb','postgresql','mysql','redis','docker','kubernetes',
+    'aws','azure','gcp','html','css','git','graphql','rest','api','next.js','nextjs','vue','angular',
+    'express','django','flask','spring','jest','cypress','playwright','webpack','vite',
+    'machine learning','ai','tensorflow','pytorch','linux','bash','agile','scrum','jira',
+  ];
+  return ALL_SKILLS.filter((s) => lower.includes(s));
+}
+
+// ── Algorithmic Tailoring Engine ─────────────────────────────────────────────
+
+function tailorResume(resume: CompactTailoredResume, requirements: JobRequirements, keywordData: KeywordData, jdText: string): CompactTailoredResume {
+  const result = { ...resume };
+
+  // 1. Reorder skills: JD-required skills first, then original skills
+  const jdLower = requirements.hardSkills.map((s) => s.toLowerCase());
+  const kwLower = keywordData.coreSkills.map((s) => s.toLowerCase());
+  const mustLower = keywordData.mustIncludeKeywords.map((s) => s.toLowerCase());
+
+  const prioritized: string[] = [];
+  const rest: string[] = [];
+
+  for (const skill of result.skills) {
+    const sl = skill.toLowerCase();
+    const isPriority = jdLower.some((j) => sl.includes(j) || j.includes(sl)) ||
+                       kwLower.some((k) => sl.includes(k) || k.includes(sl)) ||
+                       mustLower.some((m) => sl.includes(m) || m.includes(sl));
+    if (isPriority) {
+      if (!prioritized.some((p) => p.toLowerCase() === sl)) prioritized.push(skill);
+    } else {
+      rest.push(skill);
+    }
+  }
+
+  // 2. Add missing hard skills to skills array
+  for (const hs of requirements.hardSkills) {
+    const hsl = hs.toLowerCase();
+    if (!result.skills.some((s) => s.toLowerCase().includes(hsl) || hsl.includes(s.toLowerCase()))) {
+      prioritized.push(hs);
+    }
+  }
+
+  // 3. Add core JD keywords
+  for (const kw of keywordData.coreSkills) {
+    const kwl = kw.toLowerCase();
+    if (!prioritized.some((s) => s.toLowerCase().includes(kwl)) && !rest.some((s) => s.toLowerCase().includes(kwl))) {
+      prioritized.push(kw);
+    }
+  }
+
+  result.skills = [...prioritized, ...rest].slice(0, 15);
+
+  // 4. Enhance summary with JD keywords
+  const missingInSummary = keywordData.coreSkills.filter((k) => !result.summary.toLowerCase().includes(k.toLowerCase()));
+  if (missingInSummary.length > 0 && result.summary.length < 250) {
+    result.summary = result.summary.replace(/\.$/, '') + ` Skilled in ${missingInSummary.slice(0, 3).join(', ')}.`;
+  }
+
+  // 5. Weave keywords into experience bullets
+  const allKws = [...new Set([...requirements.hardSkills, ...keywordData.coreSkills, ...keywordData.mustIncludeKeywords])];
+  result.experience = result.experience.map((exp) => {
+    const newBullets = [...exp.bullets];
+    for (const kw of allKws.slice(0, 8)) {
+      const kwl = kw.toLowerCase();
+      if (newBullets.some((b) => b.toLowerCase().includes(kwl))) continue;
+
+      // Find a short bullet to enhance
+      for (let i = 0; i < newBullets.length; i++) {
+        if (newBullets[i].length < 80 && !newBullets[i].toLowerCase().includes(kwl)) {
+          const enhanced = `${newBullets[i]} using ${kw}`;
+          if (enhanced.length < 120) {
+            newBullets[i] = enhanced;
+            break;
+          }
+        }
+      }
+    }
+    return { ...exp, bullets: newBullets.slice(0, 4) };
+  });
+
+  return result;
+}
+
+// ── Graph Nodes (all algorithmic) ────────────────────────────────────────────
+
+function extractNode(state: TailorState): Partial<TailorState> {
+  const requirements = extractAlgorithmicRequirements(state.jobDescription);
+  const keywordData = extractAlgorithmicKeywords(state.jobDescription);
   return { requirements, keywordData };
 }
 
-// ── Node 2: Tailor Resume (with mandatory keyword list) ────────────────────
-
-async function tailorResumeNode(state: TailorState): Promise<Partial<TailorState>> {
-  await sleep(30000);
-
-  // Build mandatory keyword list for the LLM
-  const mandatoryKws = [
-    ...(state.keywordData?.mustIncludeKeywords ?? []),
-    ...(state.keywordData?.coreSkills ?? []),
-    ...(state.requirements?.hardSkills ?? []),
-  ];
-  const uniqueKws = [...new Set(mandatoryKws)].slice(0, 25);
-
-  const tailoredResume = await withNodeRetry(async () => {
-    const llm = getLlm().withStructuredOutput(CompactTailoredResumeSchema);
-    return llm.invoke([
-      [
-        'system',
-        'You are an ATS resume optimizer. Your #1 goal is MAXIMUM keyword coverage while keeping the resume truthful.\n\n' +
-        `MANDATORY KEYWORDS that MUST appear in the resume (in skills, experience bullets, or summary):\n${uniqueKws.join(', ')}\n\n` +
-        'RULES:\n' +
-        '1. NEVER fabricate companies, roles, projects, or metrics.\n' +
-        '2. ALL mandatory keywords MUST appear naturally in the resume.\n' +
-        '3. Put mandatory keywords at the TOP of the skills array.\n' +
-        '4. Weave keywords into experience bullets where relevant.\n' +
-        '5. Use strong action verbs. Preserve real numbers.\n' +
-        '6. Only include projects/certifications from the original resume.\n' +
-        '7. Professional summary must include 2-3 core keywords.',
-      ],
-      [
-        'human',
-        `RESUME:\n${state.resumeText.slice(0, 2500)}\n\n` +
-        `JOB DESCRIPTION:\n${state.jobDescription.slice(0, 1500)}\n\n` +
-        `JOB TITLE: ${state.requirements?.roleTitle}\n` +
-        `CORE SKILLS: ${state.keywordData?.coreSkills?.join(', ')}\n\n` +
-        'Generate tailored resume with ALL mandatory keywords included.',
-      ],
-    ]);
-  }, 'tailor_resume');
-  return { tailoredResume };
+function tailorNode(state: TailorState): Partial<TailorState> {
+  const resume = parseResumeText(state.resumeText);
+  const tailored = tailorResume(resume, state.requirements!, state.keywordData!, state.jobDescription);
+  return { tailoredResume: tailored };
 }
-
-// ── Post-Processing: Inject Any Missing Keywords ────────────────────────────
 
 function postProcessNode(state: TailorState): Partial<TailorState> {
   if (!state.tailoredResume || !state.requirements) return {};
 
-  // First ATS pass
+  // Step 1: Preserve ALL original data from the resume
+  let preserved = preserveOriginalData(state.tailoredResume, state.resumeText);
+
+  // Step 2: Compute ATS score
   let atsAnalysis = computeAtsAnalysis(
-    state.tailoredResume,
+    preserved,
     state.requirements,
     state.jobDescription,
-    state.keywordData ?? undefined
+    state.keywordData as any
   );
 
-  // If missing keywords, inject them and re-score
-  if (atsAnalysis.missingKeywords.length > 0) {
-    const injected = injectMissingKeywords(
-      state.tailoredResume,
-      atsAnalysis.missingKeywords,
-      state.requirements
-    );
-
-    // Re-score after injection
-    atsAnalysis = computeAtsAnalysis(
-      injected,
-      state.requirements,
-      state.jobDescription,
-      state.keywordData ?? undefined
-    );
-
-    return { tailoredResume: injected, atsAnalysis };
+  // Step 3: Loop — inject missing keywords until score is 95+ or no more to inject
+  let iterations = 0;
+  while (atsAnalysis.missingKeywords.length > 0 && iterations < 5) {
+    preserved = injectMissingKeywords(preserved, atsAnalysis.missingKeywords, state.requirements);
+    atsAnalysis = computeAtsAnalysis(preserved, state.requirements, state.jobDescription, state.keywordData as any);
+    iterations++;
   }
 
-  return { atsAnalysis };
+  return { tailoredResume: preserved, atsAnalysis };
 }
 
 // ── Graph Assembly ──────────────────────────────────────────────────────────
 
 const workflow = new StateGraph(TailorGraphState)
-  .addNode('extract_requirements', extractRequirementsNode)
-  .addNode('tailor_resume', tailorResumeNode)
+  .addNode('extract', extractNode)
+  .addNode('tailor', tailorNode)
   .addNode('post_process', postProcessNode)
-  .addEdge(START, 'extract_requirements')
-  .addEdge('extract_requirements', 'tailor_resume')
-  .addEdge('tailor_resume', 'post_process')
+  .addEdge(START, 'extract')
+  .addEdge('extract', 'tailor')
+  .addEdge('tailor', 'post_process')
   .addEdge('post_process', END);
 
 const tailorGraph = workflow.compile();
-
-const GRAPH_TIMEOUT_MS = 120_000;
 
 export async function runResumeTailoring(
   resumeText: string,
   jobDescription: string
 ): Promise<{ tailoredResume: CompactTailoredResume; atsAnalysis: ATSAnalysis; fullResume: ReturnType<typeof compactToFull> }> {
-  const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('Tailoring timed out after 2 minutes')), GRAPH_TIMEOUT_MS)
-  );
+  const finalState = await tailorGraph.invoke({ resumeText, jobDescription });
 
-  const graphPromise = tailorGraph.invoke({ resumeText, jobDescription });
-  const finalState = await Promise.race([graphPromise, timeoutPromise]);
-
-  if (!finalState.tailoredResume) {
-    throw new Error('Tailoring graph produced no resume');
-  }
-  if (!finalState.requirements) {
-    throw new Error('Tailoring graph missing requirements');
-  }
-  if (!finalState.atsAnalysis) {
-    throw new Error('Post-processing failed');
-  }
+  if (!finalState.tailoredResume) throw new Error('Tailoring produced no result');
+  if (!finalState.requirements) throw new Error('Requirements extraction failed');
+  if (!finalState.atsAnalysis) throw new Error('ATS analysis failed');
 
   const fullResume = compactToFull(finalState.tailoredResume);
 

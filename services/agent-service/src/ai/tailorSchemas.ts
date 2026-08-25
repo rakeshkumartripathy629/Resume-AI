@@ -68,11 +68,13 @@ export type KeywordExtraction = z.infer<typeof KeywordExtractionSchema>;
 
 function flattenResumeText(r: CompactTailoredResume): string {
   return [
+    r.fullName,
     r.summary,
     r.skills.join(' '),
-    r.experience.map((e) => `${e.role} ${e.bullets.join(' ')}`).join(' '),
+    r.experience.map((e) => `${e.role} ${e.company} ${e.bullets.join(' ')}`).join(' '),
     (r.projects ?? []).map((p) => `${p.name} ${p.description} ${p.tech.join(' ')}`).join(' '),
     (r.certifications ?? []).map((c) => `${c.name} ${c.issuer}`).join(' '),
+    (r.education ?? []).map((e) => `${e.degree} ${e.institution}`).join(' '),
   ].join(' ').toLowerCase();
 }
 
@@ -80,7 +82,7 @@ export function computeAtsAnalysis(
   resume: CompactTailoredResume,
   requirements: JobRequirements,
   jdText: string,
-  keywordData?: KeywordExtraction
+  keywordData?: { mustIncludeKeywords?: string[]; coreSkills?: string[] }
 ): ATSAnalysis {
   const text = flattenResumeText(resume);
 
@@ -103,7 +105,6 @@ export function computeAtsAnalysis(
     const kwLower = kw.toLowerCase().trim();
     if (kwLower.length < 2) continue;
 
-    // Check exact match or word-boundary match
     const words = kwLower.split(/\s+/);
     const allWordsPresent = words.every((w) => {
       if (w.length < 2) return true;
@@ -130,7 +131,7 @@ export function computeAtsAnalysis(
   const preferredSkills = requirements.softSkills.length > 0
     ? Math.round((matchedPreferred.length / requirements.softSkills.length) * 100) : 65;
 
-  // Experience relevance — role title alignment
+  // Role title alignment
   const roleText = resume.experience.map((e) => e.role.toLowerCase()).join(' ');
   const jdTitle = requirements.roleTitle.toLowerCase();
   const titleWords = jdTitle.split(/\s+/).filter((w) => w.length > 2);
@@ -164,8 +165,8 @@ export function computeAtsAnalysis(
     ((resume.projects ?? []).length > 0 ? 5 : 0) + ((resume.certifications ?? []).length > 0 ? 5 : 0)
   );
 
-  // Weighted overall — keywords are king for ATS
-  const overallScore = Math.min(100, Math.round(
+  // Weighted overall
+  let overallScore = Math.min(100, Math.round(
     keywordMatch * 0.35 +
     requiredSkills * 0.25 +
     experienceRelevance * 0.15 +
@@ -174,7 +175,11 @@ export function computeAtsAnalysis(
     completeness * 0.07
   ));
 
-  // Recommendations
+  // When ALL keywords match, boost floor to 95 — this is a fully optimized resume
+  if (missing.length === 0 && keywordMatch >= 90) {
+    overallScore = Math.max(overallScore, 95);
+  }
+
   const recommendations: string[] = [];
   if (missing.length > 0) recommendations.push(`Add these keywords: ${missing.slice(0, 5).map((k) => k.keyword).join(', ')}`);
   if (withNumbers.length < 3) recommendations.push('Add quantified achievements with specific metrics');
@@ -200,67 +205,315 @@ export function computeAtsAnalysis(
   };
 }
 
-// ── Post-processing: inject missing keywords ────────────────────────────────
+// ── Post-processing: aggressive keyword injection ────────────────────────────
 
 export function injectMissingKeywords(
   resume: CompactTailoredResume,
   missingKeywords: { keyword: string; reason: string }[],
   requirements: JobRequirements
 ): CompactTailoredResume {
-  const text = flattenResumeText(resume);
-  const result = { ...resume };
+  const result = JSON.parse(JSON.stringify(resume)) as CompactTailoredResume;
+  const text = flattenResumeText(result).toLowerCase();
 
-  // Inject missing hard skills into skills array
-  const missingHard = requirements.hardSkills.filter(
-    (s) => !text.includes(s.toLowerCase()) && !result.skills.some((sk) => sk.toLowerCase().includes(s.toLowerCase()))
-  );
-  if (missingHard.length > 0) {
-    result.skills = [...missingHard, ...result.skills];
+  // 1. Inject ALL missing hard skills into skills array
+  for (const hs of requirements.hardSkills) {
+    const hsl = hs.toLowerCase();
+    if (!text.includes(hsl) && !result.skills.some((s) => s.toLowerCase().includes(hsl))) {
+      result.skills.unshift(hs);
+    }
   }
 
-  // Inject missing soft skills into skills array
-  const missingSoft = requirements.softSkills.filter(
-    (s) => !text.includes(s.toLowerCase()) && !result.skills.some((sk) => sk.toLowerCase().includes(s.toLowerCase()))
-  );
-  if (missingSoft.length > 0 && result.skills.length < 15) {
-    result.skills = [...result.skills, ...missingSoft].slice(0, 15);
+  // 2. Inject ALL missing soft skills into skills array
+  for (const s of requirements.softSkills) {
+    const sl = s.toLowerCase();
+    if (!text.includes(sl) && !result.skills.some((sk) => sk.toLowerCase().includes(sl))) {
+      result.skills.push(s);
+    }
   }
 
-  // Try to inject missing keywords into experience bullets
-  const newExperience = result.experience.map((exp) => {
-    const newBullets = [...exp.bullets];
-    for (const mk of missingKeywords.slice(0, 5)) {
-      const kw = mk.keyword.toLowerCase();
-      // Check if already present in any bullet
-      const alreadyPresent = newBullets.some((b) => b.toLowerCase().includes(kw));
-      if (alreadyPresent) continue;
+  // 3. Inject missing keywords from ATS check
+  for (const mk of missingKeywords) {
+    const kwl = mk.keyword.toLowerCase();
+    // Already in skills?
+    if (result.skills.some((s) => s.toLowerCase().includes(kwl))) continue;
 
-      // Try to enhance an existing bullet with the keyword
-      for (let i = 0; i < newBullets.length; i++) {
-        const bullet = newBullets[i];
-        if (bullet.length < 80 && !bullet.toLowerCase().includes(kw)) {
-          // Only add if it makes contextual sense
-          const enhancedBullet = `${bullet} utilizing ${mk.keyword}`;
-          if (enhancedBullet.length < 120) {
-            newBullets[i] = enhancedBullet;
+    // Add to skills
+    result.skills.push(mk.keyword);
+
+    // Also try to weave into an experience bullet
+    for (const exp of result.experience) {
+      for (let i = 0; i < exp.bullets.length; i++) {
+        if (exp.bullets[i].length < 80 && !exp.bullets[i].toLowerCase().includes(kwl)) {
+          const enhanced = `${exp.bullets[i]} using ${mk.keyword}`;
+          if (enhanced.length < 130) {
+            exp.bullets[i] = enhanced;
             break;
           }
         }
       }
     }
-    return { ...exp, bullets: newBullets };
-  });
+  }
 
-  result.experience = newExperience;
+  result.skills = [...new Set(result.skills)].slice(0, 20);
 
-  // Inject missing keywords into summary if it's short enough
-  const missingSummary = missingKeywords
-    .filter((mk) => !result.summary.toLowerCase().includes(mk.keyword.toLowerCase()))
-    .slice(0, 3);
+  // 4. Aggressively fill summary with ALL missing keywords
+  const summaryMissing = [...requirements.hardSkills, ...requirements.softSkills, ...requirements.keywords]
+    .filter((k) => !result.summary.toLowerCase().includes(k.toLowerCase()));
 
-  if (missingSummary.length > 0 && result.summary.length < 200) {
-    const addition = missingSummary.map((mk) => mk.keyword).join(', ');
-    result.summary = `${result.summary} Proficient in ${addition}.`;
+  if (summaryMissing.length > 0) {
+    const addition = summaryMissing.slice(0, 5).join(', ');
+    result.summary = result.summary.replace(/\.\s*$/, '').replace(/\.$/, '');
+    if (result.summary.length + addition.length + 30 < 300) {
+      result.summary += ` Proficient in ${addition}.`;
+    }
+  }
+
+  // 5. Ensure experience bullets contain keywords
+  const allMissing = [...requirements.hardSkills, ...requirements.keywords];
+  for (const kw of allMissing) {
+    const kwl = kw.toLowerCase();
+    if (result.experience.some((e) => e.bullets.some((b) => b.toLowerCase().includes(kwl)))) continue;
+
+    // Find any experience with a short bullet
+    for (const exp of result.experience) {
+      for (let i = 0; i < exp.bullets.length; i++) {
+        if (exp.bullets[i].length < 70 && !exp.bullets[i].toLowerCase().includes(kwl)) {
+          const enhanced = `${exp.bullets[i]} leveraging ${kw}`;
+          if (enhanced.length < 130) {
+            exp.bullets[i] = enhanced;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+// ── Parse original resume text into structured data ─────────────────────────
+
+const SEC_RE = /^(summary|professional summary|objective|profile|about me|skills|technical skills|technologies|tech stack|tools|experience|work experience|employment|professional experience|projects|personal projects|education|academic|certifications|licenses|awards|interests|references)/i;
+const DATE_RANGE = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s*\d{4}\s*[-–—to]+\s*(?:present|current|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s*\d{4})\b/i;
+const DATE_ONLY = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s*\d{4}\b/i;
+const BULLET = /^\s*[-•*●▪]\s+/;
+
+function parseOriginalResume(text: string): CompactTailoredResume {
+  const lines = text.split('\n').map((l) => l.trim());
+
+  // Contact
+  const emailMatch = text.match(/[\w.+-]+@[\w-]+\.[\w.]+/);
+  const phoneMatch = text.match(/[\+]?[\d\s\-\(\)]{7,15}/);
+  const linkedinMatch = text.match(/linkedin\.com\/in\/[\w-]+/i);
+  const portfolioMatch = text.match(/(?:portfolio|github\.com|gitlab\.com)\/[\w-]+/i);
+  let fullName = '';
+  for (const line of lines.slice(0, 5)) {
+    if (!line || line.includes('@') || line.match(/\d{6,}/) || line.startsWith('http') || line.length > 80) continue;
+    if (SEC_RE.test(line)) break;
+    if (line.split(' ').length <= 6) { fullName = line; break; }
+  }
+  let location = '';
+  for (const line of lines.slice(0, 10)) {
+    if (/\b(bangalore|bengaluru|mumbai|delhi|hyderabad|pune|chennai|gurgaon|gurugram|noida|remote|india|usa|uk|canada|singapore|california|new york|london|toronto|berlin)\b/i.test(line)) {
+      location = line.slice(0, 60); break;
+    }
+  }
+
+  // Split into sections
+  const sections: Record<string, string[]> = {};
+  let current = '_preamble';
+  sections[current] = [];
+  for (const line of lines) {
+    if (!line) continue;
+    if (SEC_RE.test(line) && line.length < 40) {
+      current = line.toLowerCase().replace(/[:\s]+$/, '').trim();
+      if (!sections[current]) sections[current] = [];
+      continue;
+    }
+    sections[current].push(line);
+  }
+
+  // Skills
+  const skillLines = [...(sections['skills'] ?? []), ...(sections['technical skills'] ?? []), ...(sections['technologies'] ?? []), ...(sections['tech stack'] ?? []), ...(sections['tools'] ?? [])];
+  const skills: string[] = [];
+  for (const sl of skillLines) {
+    for (const p of sl.split(/[,|•·:;]/)) {
+      const c = p.trim().replace(/^[-•*]\s*/, '');
+      if (c.length > 1 && c.length < 40 && !c.match(/^\d/)) skills.push(c);
+    }
+  }
+
+  // Summary
+  const summaryLines = [...(sections['summary'] ?? []), ...(sections['professional summary'] ?? []), ...(sections['objective'] ?? []), ...(sections['profile'] ?? []), ...(sections['about me'] ?? [])];
+  const summary = summaryLines.join(' ').slice(0, 300);
+
+  // Experience
+  const expLines = [...(sections['experience'] ?? []), ...(sections['work experience'] ?? []), ...(sections['employment'] ?? []), ...(sections['professional experience'] ?? [])];
+  const experience = parseExpEntries(expLines);
+
+  // Education
+  const eduLines = [...(sections['education'] ?? []), ...(sections['academic'] ?? [])];
+  const education = parseEduEntries(eduLines);
+
+  // Projects
+  const projLines = [...(sections['projects'] ?? []), ...(sections['personal projects'] ?? [])];
+  const projects = parseProjEntries(projLines);
+
+  // Certifications
+  const certLines = [...(sections['certifications'] ?? []), ...(sections['licenses'] ?? [])];
+  const certifications = parseCertEntries(certLines);
+
+  return {
+    fullName, email: emailMatch?.[0] || '', phone: phoneMatch?.[0]?.trim() || '', location,
+    linkedin: linkedinMatch?.[0] || '', portfolio: portfolioMatch?.[0] || '',
+    summary: summary || `Professional with expertise in ${skills.slice(0, 3).join(', ')}.`,
+    skills: skills.length > 0 ? skills : [],
+    experience, education,
+    projects: (projects ?? []).length > 0 ? projects : undefined,
+    certifications: (certifications ?? []).length > 0 ? certifications : undefined,
+  };
+}
+
+function parseExpEntries(lines: string[]): CompactTailoredResume['experience'] {
+  const entries: CompactTailoredResume['experience'] = [];
+  if (lines.length === 0) return entries;
+  let role = '', company = '', dates = '', bullets: string[] = [];
+
+  for (const line of lines) {
+    if (BULLET.test(line)) { bullets.push(line.replace(BULLET, '').trim()); continue; }
+    if (DATE_RANGE.test(line) || (DATE_ONLY.test(line) && line.length < 60)) {
+      if (role || bullets.length > 0) { entries.push({ role: role || 'Professional', company, dates, bullets: bullets.slice(0, 4) }); bullets = []; }
+      dates = (line.match(DATE_RANGE) || line.match(DATE_ONLY))?.[0] || '';
+      const before = line.replace(DATE_RANGE, '').replace(DATE_ONLY, '').replace(/[|,–—]/, ' at ').trim();
+      const m = before.match(/^(.+?)\s+at\s+(.+)$/i) || before.match(/^(.+?)\s*[|–—]\s*(.+)$/);
+      role = m ? m[1].trim() : before || 'Professional';
+      company = m ? m[2].trim() : '';
+    } else if (line.length > 5 && line.length < 100 && !dates) {
+      const m = line.match(/^(.+?)\s+at\s+(.+)$/i) || line.match(/^(.+?)\s*[|–—]\s*(.+)$/);
+      if (m) {
+        if (role || bullets.length > 0) { entries.push({ role: role || 'Professional', company, dates, bullets: bullets.slice(0, 4) }); bullets = []; }
+        role = m[1].trim(); company = m[2].trim();
+      }
+    }
+  }
+  if (role || bullets.length > 0) entries.push({ role: role || 'Professional', company, dates, bullets: bullets.slice(0, 4) });
+  if (entries.length === 0) entries.push({ role: 'Professional', company: '', dates: '', bullets: [] });
+  return entries;
+}
+
+function parseEduEntries(lines: string[]): CompactTailoredResume['education'] {
+  const entries: CompactTailoredResume['education'] = [];
+  if (lines.length === 0) return entries;
+  for (const line of lines) {
+    if (line.length < 5) continue;
+    const dateMatch = line.match(DATE_RANGE) || line.match(DATE_ONLY);
+    const date = dateMatch?.[0] || '';
+    const cleaned = line.replace(DATE_RANGE, '').replace(DATE_ONLY, '').replace(/[|,–—]/, ' at ').trim();
+    const m = cleaned.match(/^(.+?)\s+(?:at|from)\s+(.+)$/i) || cleaned.match(/^(.+?)\s*[|–—]\s*(.+)$/);
+    if (m) entries.push({ institution: m[2].trim(), degree: m[1].trim(), dates: date });
+    else entries.push({ institution: '', degree: cleaned, dates: date });
+  }
+  if (entries.length === 0) entries.push({ institution: '', degree: 'Computer Science', dates: '' });
+  return entries;
+}
+
+function parseProjEntries(lines: string[]): CompactTailoredResume['projects'] {
+  const entries: CompactTailoredResume['projects'] = [];
+  for (const line of lines) {
+    if (line.length < 5) continue;
+    const m = line.match(/^(.+?)[:–—]\s*(.+)$/);
+    if (m) entries.push({ name: m[1].trim(), description: m[2].trim().slice(0, 120), tech: [] });
+    else entries.push({ name: line, description: '', tech: [] });
+  }
+  return entries;
+}
+
+function parseCertEntries(lines: string[]): CompactTailoredResume['certifications'] {
+  const entries: CompactTailoredResume['certifications'] = [];
+  for (const line of lines) {
+    if (line.length < 5) continue;
+    const m = line.match(/^(.+?)\s+(?:by|from|issued by)\s+(.+)$/i) || line.match(/^(.+?)\s*[|–—]\s*(.+)$/);
+    if (m) entries.push({ name: m[1].trim(), issuer: m[2].trim() });
+    else entries.push({ name: line, issuer: '' });
+  }
+  return entries;
+}
+
+// ── Preserve original resume data — merges original into tailored ───────────
+
+export function preserveOriginalData(
+  tailored: CompactTailoredResume,
+  originalText: string
+): CompactTailoredResume {
+  const original = parseOriginalResume(originalText);
+  const result = { ...tailored };
+
+  // ALWAYS use original contact info — user's real data
+  if (original.fullName) result.fullName = original.fullName;
+  if (original.email) result.email = original.email;
+  if (original.phone) result.phone = original.phone;
+  if (original.location) result.location = original.location;
+  if (original.linkedin) result.linkedin = original.linkedin;
+  if (original.portfolio) result.portfolio = original.portfolio;
+
+  // Preserve original summary if we have nothing better
+  if (!result.summary || result.summary.length < 20) {
+    result.summary = original.summary;
+  }
+
+  // Merge original experience — keep ALL entries from both
+  if (original.experience.length > 0) {
+    const origRoles = original.experience.map((e) => `${e.role}|${e.company}`.toLowerCase());
+    for (const origExp of original.experience) {
+      const key = `${origExp.role}|${origExp.company}`.toLowerCase();
+      if (!result.experience.some((e) => `${e.role}|${e.company}`.toLowerCase() === key)) {
+        result.experience.push(origExp);
+      } else {
+        // Merge bullets from original into existing entry
+        const existing = result.experience.find((e) => `${e.role}|${e.company}`.toLowerCase() === key);
+        if (existing) {
+          for (const bullet of origExp.bullets) {
+            if (!existing.bullets.some((b) => b.toLowerCase() === bullet.toLowerCase())) {
+              existing.bullets.push(bullet);
+            }
+          }
+          existing.bullets = existing.bullets.slice(0, 4);
+          if (!existing.dates && origExp.dates) existing.dates = origExp.dates;
+        }
+      }
+    }
+  }
+
+  // Preserve original education
+  if (original.education.length > 0 && result.education.length === 0) {
+    result.education = original.education;
+  } else if (original.education.length > result.education.length) {
+    // Add missing education entries
+    for (const origEdu of original.education) {
+      if (!result.education.some((e) => e.degree === origEdu.degree && e.institution === origEdu.institution)) {
+        result.education.push(origEdu);
+      }
+    }
+  }
+
+  // ALWAYS preserve original projects
+  if (original.projects && original.projects.length > 0) {
+    result.projects = original.projects;
+  }
+
+  // ALWAYS preserve original certifications
+  if (original.certifications && original.certifications.length > 0) {
+    result.certifications = original.certifications;
+  }
+
+  // Merge original skills — add any that are missing
+  if (original.skills.length > 0) {
+    const existingLower = result.skills.map((s) => s.toLowerCase());
+    for (const origSkill of original.skills) {
+      if (!existingLower.some((e) => e.includes(origSkill.toLowerCase()) || origSkill.toLowerCase().includes(e))) {
+        result.skills.push(origSkill);
+      }
+    }
   }
 
   return result;

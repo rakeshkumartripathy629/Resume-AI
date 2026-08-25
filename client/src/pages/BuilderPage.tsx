@@ -74,11 +74,11 @@ export function BuilderPage() {
     }
   }, [dispatch, id, title, content, status])
 
-  function handleDownloadPdf() {
+  async function handleDownloadPdf() {
     setExporting('pdf')
     try {
       const resume = contentToTailoredResume(content)
-      generateResumePdf(resume, `${title.replace(/\s+/g, '_')}.pdf`)
+      await generateResumePdf(resume, `${title.replace(/\s+/g, '_')}.pdf`)
     } finally {
       setTimeout(() => setExporting(null), 500)
     }
