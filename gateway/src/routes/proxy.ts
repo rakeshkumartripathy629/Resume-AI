@@ -11,8 +11,9 @@ export function blockInternalPaths(req: Request, _res: Response, next: NextFunct
   next();
 }
 
-function proxyTo(target: string) {
+function proxyTo(prefix: string, target: string) {
   return createProxyMiddleware({
+    pathFilter: prefix,
     target,
     changeOrigin: false,
     xfwd: true,
@@ -52,6 +53,7 @@ const routeTable: Array<[string, string]> = [
 
 export function mountProxies(app: import('express').Express): void {
   for (const [prefix, target] of routeTable) {
-    app.use(prefix, proxyTo(target));
+    // pathFilter preserves the full original URL when forwarding upstream
+    app.use(proxyTo(prefix, target));
   }
 }
