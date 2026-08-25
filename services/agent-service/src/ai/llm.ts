@@ -15,5 +15,6 @@ export function getLlm(): ChatOpenAI {
     timeout: 60_000,
     maxRetries: 2,
     openAIApiKey: env.openai.apiKey,
+    ...(env.openai.baseUrl ? { configuration: { baseURL: env.openai.baseUrl } } : {}),
   });
 }

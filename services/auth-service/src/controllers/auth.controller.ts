@@ -22,7 +22,12 @@ export async function createSessionController(req: Request, res: Response): Prom
     throw new HttpError(400, 'idToken is required');
   }
 
-  const decoded = await verifyFirebaseIdToken(idToken);
+  let decoded;
+  try {
+    decoded = await verifyFirebaseIdToken(idToken);
+  } catch {
+    throw new HttpError(401, 'Invalid or expired idToken');
+  }
   if (!decoded.uid || !decoded.email) {
     throw new HttpError(401, 'Invalid token payload');
   }

@@ -29,6 +29,7 @@ export const env = {
   },
   openai: {
     apiKey: process.env.OPENAI_API_KEY || '',
+    baseUrl: process.env.OPENAI_BASE_URL || '',
     model: required('OPENAI_MODEL', 'gpt-4o-mini'),
   },
 } as const;

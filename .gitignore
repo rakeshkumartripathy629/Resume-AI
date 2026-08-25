@@ -27,3 +27,5 @@ coverage/
 # Docker
 mongo-data/
 redis-data/
+
+secrets/

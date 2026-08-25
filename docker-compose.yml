@@ -58,7 +58,8 @@ services:
       - MONGODB_URI=mongodb://mongo:27017/resume-builder
       - AUTH_SERVICE_URL=http://auth-service:4001
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.groq.com/openai/v1}
+      - OPENAI_MODEL=${OPENAI_MODEL:-llama-3.3-70b-versatile}
       - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
       - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL}
       - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY}
@@ -75,7 +76,8 @@ services:
       - AUTH_SERVICE_URL=http://auth-service:4001
       - DEFAULT_QUESTION_COUNT=6
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.groq.com/openai/v1}
+      - OPENAI_MODEL=${OPENAI_MODEL:-llama-3.3-70b-versatile}
       - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
       - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL}
       - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY}
@@ -91,7 +93,8 @@ services:
       - MONGODB_URI=mongodb://mongo:27017/resume-builder
       - AUTH_SERVICE_URL=http://auth-service:4001
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.groq.com/openai/v1}
+      - OPENAI_MODEL=${OPENAI_MODEL:-llama-3.3-70b-versatile}
       - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
       - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL}
       - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY}
