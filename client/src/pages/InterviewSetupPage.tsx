@@ -33,29 +33,29 @@ export function InterviewSetupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-mesh">
       <Navbar authed />
 
       <main className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6">
-        <div className="mb-8">
-          <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-indigo-600">
+        <div className="mb-8 animate-fade-in">
+          <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-brand-600">
             <Mic className="size-4" />
             Mock interview
           </div>
           <h1 className="mt-2 flex items-center gap-3 text-3xl font-extrabold tracking-tight text-slate-900">
-            <span className="flex size-11 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 shadow-lg shadow-violet-500/25">
+            <span className="flex size-11 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 shadow-lg shadow-violet-500/20">
               <Mic className="size-6 text-white" />
             </span>
             Set up your interview
           </h1>
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-slate-400">
             Our AI will ask you {QUESTION_COUNT} role-specific questions and grade every answer.
           </p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-900/5 sm:p-8"
+          className="rounded-3xl border border-slate-100 bg-white p-6 shadow-xl shadow-slate-900/5 sm:p-8"
         >
           <label htmlFor="role" className="block text-sm font-bold text-slate-900">
             Target role <span className="text-red-500">*</span>
@@ -71,7 +71,7 @@ export function InterviewSetupPage() {
               minLength={2}
               maxLength={120}
               required
-              className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-12 pr-4 text-[15px] text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/10"
+              className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-12 pr-4 text-[15px] text-slate-900 placeholder:text-slate-400 transition-all focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-100 focus:shadow-glow-brand"
             />
           </div>
 
@@ -85,17 +85,17 @@ export function InterviewSetupPage() {
                   key={level}
                   type="button"
                   onClick={() => setDifficulty(level)}
-                  className={`rounded-2xl border p-4 text-left transition-all ${
+                  className={`rounded-2xl border p-4 text-left transition-all duration-200 ${
                     selected
-                      ? 'border-indigo-500 bg-indigo-50/60 ring-4 ring-indigo-500/10'
-                      : 'border-slate-200 bg-white hover:border-slate-300'
+                      ? 'border-brand-400 bg-brand-50/60 ring-4 ring-brand-100 shadow-md shadow-brand-500/10'
+                      : 'border-slate-100 bg-white hover:border-slate-200 hover:shadow-sm'
                   }`}
                 >
                   <span className="text-lg">{meta.icon}</span>
-                  <p className={`text-sm font-bold ${selected ? 'text-indigo-700' : 'text-slate-900'}`}>
+                  <p className={`text-sm font-bold ${selected ? 'text-brand-700' : 'text-slate-900'}`}>
                     {meta.label}
                   </p>
-                  <p className="mt-0.5 text-xs leading-relaxed text-slate-500">{meta.description}</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-slate-400">{meta.description}</p>
                 </button>
               )
             })}
@@ -122,7 +122,7 @@ export function InterviewSetupPage() {
           )}
 
           <div className="mt-8 flex flex-col items-stretch justify-between gap-4 border-t border-slate-100 pt-6 sm:flex-row sm:items-center">
-            <span className="flex items-center justify-center gap-1.5 rounded-full border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-2 text-sm font-bold text-amber-700">
+            <span className="flex items-center justify-center gap-1.5 rounded-full border border-amber-200/80 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-2 text-sm font-bold text-amber-700">
               <Coins className="size-4 text-amber-500" />
               Costs {INTERVIEW_COST} coins
             </span>
@@ -142,7 +142,7 @@ export function InterviewSetupPage() {
         </form>
 
         {startStatus === 'loading' && (
-          <p className="mt-4 flex items-center justify-center gap-2 animate-pulse text-sm font-semibold text-indigo-600">
+          <p className="mt-4 flex items-center justify-center gap-2 animate-pulse text-sm font-semibold text-brand-600">
             <Loader2 className="size-4 animate-spin" /> Designing your question set…
           </p>
         )}

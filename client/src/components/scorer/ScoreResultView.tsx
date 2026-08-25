@@ -23,12 +23,12 @@ export function ScoreResultView() {
   const verdict = VERDICT_META[result.verdict as Verdict] ?? VERDICT_META.needs_work
 
   return (
-    <div>
+    <div className="animate-fade-in">
       <div className="mb-6">
         <button
           type="button"
           onClick={() => dispatch(backToEditor())}
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition-colors hover:text-indigo-600"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-400 transition-colors hover:text-brand-600"
         >
           <ArrowLeft className="size-4" />
           Edit inputs
@@ -36,8 +36,8 @@ export function ScoreResultView() {
       </div>
 
       {/* Overall card */}
-      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-col items-center gap-8 p-8 sm:flex-row sm:p-10">
+      <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-lg shadow-slate-900/5">
+        <div className="bg-mesh relative flex flex-col items-center gap-8 p-8 sm:flex-row sm:p-10">
           <ScoreRing score={result.overallScore} />
           <div className="flex-1 text-center sm:text-left">
             <span
@@ -49,7 +49,7 @@ export function ScoreResultView() {
             <h2 className="mt-4 text-2xl font-extrabold tracking-tight text-slate-900">
               Your resume scorecard
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600">{result.summary}</p>
+            <p className="mt-2 text-sm leading-relaxed text-slate-500">{result.summary}</p>
           </div>
         </div>
 
@@ -64,9 +64,9 @@ export function ScoreResultView() {
 
       {/* Strengths + Improvements */}
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm">
+        <section className="rounded-2xl border border-slate-100 bg-white p-7 shadow-sm">
           <h3 className="flex items-center gap-2 font-bold text-slate-900">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-emerald-50">
+            <span className="flex size-8 items-center justify-center rounded-xl bg-emerald-50">
               <BadgeCheck className="size-4.5 text-emerald-600" />
             </span>
             Strengths
@@ -81,17 +81,17 @@ export function ScoreResultView() {
           </ul>
         </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm">
+        <section className="rounded-2xl border border-slate-100 bg-white p-7 shadow-sm">
           <h3 className="flex items-center gap-2 font-bold text-slate-900">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-indigo-50">
-              <TrendingUp className="size-4.5 text-indigo-600" />
+            <span className="flex size-8 items-center justify-center rounded-xl bg-brand-50">
+              <TrendingUp className="size-4.5 text-brand-600" />
             </span>
             Prioritized improvements
           </h3>
           <ol className="mt-4 space-y-3">
             {result.improvements.map((item, index) => (
               <li key={item} className="flex items-start gap-3 text-sm text-slate-600">
-                <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-[11px] font-bold text-indigo-700">
+                <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-brand-100 text-[11px] font-bold text-brand-700">
                   {index + 1}
                 </span>
                 {item}
@@ -103,9 +103,9 @@ export function ScoreResultView() {
 
       {/* Missing keywords */}
       {result.missingKeywords.length > 0 && (
-        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-7 shadow-sm">
+        <section className="mt-6 rounded-2xl border border-slate-100 bg-white p-7 shadow-sm">
           <h3 className="flex items-center gap-2 font-bold text-slate-900">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-amber-50">
+            <span className="flex size-8 items-center justify-center rounded-xl bg-amber-50">
               <ClipboardList className="size-4.5 text-amber-600" />
             </span>
             Missing keywords
@@ -117,7 +117,7 @@ export function ScoreResultView() {
             {result.missingKeywords.map((keyword) => (
               <span
                 key={keyword}
-                className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800"
+                className="inline-flex items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700"
               >
                 <CircleAlert className="size-3.5" />
                 {keyword}

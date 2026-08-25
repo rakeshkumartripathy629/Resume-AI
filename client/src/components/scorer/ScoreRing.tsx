@@ -13,18 +13,32 @@ export function ScoreRing({ score }: { score: number }) {
   }, [score])
 
   const offset = circumference - (displayed / 100) * circumference
-  const color =
-    score >= 80 ? '#059669' : score >= 65 ? '#65a30d' : score >= 45 ? '#d97706' : '#dc2626'
+
+  const colorGradient =
+    score >= 80
+      ? ['#059669', '#10b981']
+      : score >= 65
+        ? ['#65a30d', '#84cc16']
+        : score >= 45
+          ? ['#d97706', '#f59e0b']
+          : ['#dc2626', '#ef4444']
+  const gradientId = `score-ring-${score}`
 
   return (
     <div className="relative inline-flex items-center justify-center">
       <svg width={size} height={size} className="-rotate-90">
+        <defs>
+          <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor={colorGradient[0]} />
+            <stop offset="100%" stopColor={colorGradient[1]} />
+          </linearGradient>
+        </defs>
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="#e2e8f0"
+          stroke="#f1f5f9"
           strokeWidth={stroke}
         />
         <circle
@@ -32,12 +46,12 @@ export function ScoreRing({ score }: { score: number }) {
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke={color}
+          stroke={`url(#${gradientId})`}
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
-          style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(0.22,1,0.36,1), stroke 0.4s' }}
+          style={{ transition: 'stroke-dashoffset 1.4s cubic-bezier(0.22,1,0.36,1)' }}
         />
       </svg>
       <div className="absolute flex flex-col items-center">

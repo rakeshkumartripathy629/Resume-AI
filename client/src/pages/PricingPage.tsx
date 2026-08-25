@@ -72,19 +72,19 @@ export function PricingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-mesh">
       <Navbar authed />
 
       <main className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6">
-        <div className="text-center">
-          <div className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-indigo-600">
+        <div className="text-center animate-fade-in">
+          <div className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-brand-600">
             <CreditCard className="size-4" />
             Coin packs
           </div>
           <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
-            Top up your <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">AI credits</span>
+            Top up your <span className="text-gradient">AI credits</span>
           </h1>
-          <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-slate-500">
+          <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-slate-400">
             Coins power every AI action — resume scoring (5), mock interviews (10), and career
             roadmaps (8). One-time purchase, no subscription.
           </p>
@@ -114,26 +114,26 @@ export function PricingPage() {
         <div className="mt-10 grid gap-6 sm:grid-cols-2">
           {status === 'loading' && packs.length === 0 ? (
             <div className="col-span-full flex justify-center py-16">
-              <Loader2 className="size-8 animate-spin text-indigo-500" />
+              <Loader2 className="size-8 animate-spin text-brand-500" />
             </div>
           ) : (
             packs.map((pack) => (
               <div
                 key={pack.id}
-                className={`relative overflow-hidden rounded-3xl border bg-white p-7 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-900/10 ${
-                  pack.popular ? 'border-indigo-300 ring-2 ring-indigo-500/20' : 'border-slate-200'
+                className={`relative overflow-hidden rounded-3xl border bg-white p-7 card-hover ${
+                  pack.popular ? 'border-brand-300 ring-2 ring-brand-500/20 shadow-glow-brand' : 'border-slate-100'
                 }`}
               >
                 {pack.popular && (
-                  <span className="absolute right-5 top-5 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-md">
+                  <span className="absolute right-5 top-5 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-brand-600 to-accent-600 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-md">
                     <Sparkles className="size-3" /> Popular
                   </span>
                 )}
-                <span className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-500/25">
+                <span className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-500/20">
                   <Coins className="size-6" />
                 </span>
                 <h2 className="mt-5 text-xl font-extrabold text-slate-900">{pack.name}</h2>
-                <p className="mt-1 text-sm text-slate-500">{pack.description}</p>
+                <p className="mt-1 text-sm text-slate-400">{pack.description}</p>
 
                 <p className="mt-5 flex items-baseline gap-1.5">
                   <span className="text-4xl font-extrabold tracking-tight text-slate-900">
@@ -146,12 +146,12 @@ export function PricingPage() {
                   <li className="flex items-center gap-2 text-sm font-semibold text-slate-700">
                     <CheckCircle2 className="size-4 text-emerald-500" /> {pack.coinAmount} coins
                   </li>
-                  <li className="flex items-center gap-2 text-sm text-slate-600">
-                    <CheckCircle2 className="size-4 text-slate-400" /> ~{Math.floor(pack.coinAmount / 10)} interviews or{' '}
+                  <li className="flex items-center gap-2 text-sm text-slate-500">
+                    <CheckCircle2 className="size-4 text-slate-300" /> ~{Math.floor(pack.coinAmount / 10)} interviews or{' '}
                     {Math.floor(pack.coinAmount / 5)} resume scores
                   </li>
-                  <li className="flex items-center gap-2 text-sm text-slate-600">
-                    <CheckCircle2 className="size-4 text-slate-400" /> Never expires
+                  <li className="flex items-center gap-2 text-sm text-slate-500">
+                    <CheckCircle2 className="size-4 text-slate-300" /> Never expires
                   </li>
                 </ul>
 

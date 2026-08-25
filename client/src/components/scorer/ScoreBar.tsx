@@ -8,14 +8,14 @@ export function ScoreBar({ label, score }: { label: string; score: number }) {
     return () => clearTimeout(timer)
   }, [score])
 
-  const barColor =
+  const barGradient =
     score >= 80
-      ? 'bg-gradient-to-r from-emerald-500 to-emerald-600'
+      ? 'from-emerald-400 to-emerald-600'
       : score >= 65
-        ? 'bg-gradient-to-r from-lime-500 to-lime-600'
+        ? 'from-lime-400 to-lime-600'
         : score >= 45
-          ? 'bg-gradient-to-r from-amber-400 to-amber-500'
-          : 'bg-gradient-to-r from-red-400 to-red-500'
+          ? 'from-amber-400 to-amber-500'
+          : 'from-red-400 to-red-500'
 
   return (
     <div>
@@ -25,8 +25,8 @@ export function ScoreBar({ label, score }: { label: string; score: number }) {
       </div>
       <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
         <div
-          className={`h-full rounded-full ${barColor}`}
-          style={{ width: `${width}%`, transition: 'width 1s cubic-bezier(0.22,1,0.36,1)' }}
+          className={`h-full rounded-full bg-gradient-to-r ${barGradient}`}
+          style={{ width: `${width}%`, transition: 'width 1.2s cubic-bezier(0.22,1,0.36,1)' }}
         />
       </div>
     </div>

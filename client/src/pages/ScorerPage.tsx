@@ -24,7 +24,6 @@ export function ScorerPage() {
   )
   const [localError, setLocalError] = useState<string | null>(null)
 
-  // Refresh coin balance after a successful (charged) score run
   useEffect(() => {
     if (status === 'succeeded') {
       void dispatch(fetchCoinBalance())
@@ -48,27 +47,27 @@ export function ScorerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-mesh">
       <Navbar authed />
 
       <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
         {/* Stepper */}
         <div className="mb-8 flex items-center gap-3">
           <StepBadge active={!result} done={Boolean(result)} n={1} label="Inputs" />
-          <span className={`h-0.5 flex-1 rounded ${result ? 'bg-indigo-500' : 'bg-slate-200'}`} />
+          <span className={`h-0.5 flex-1 rounded-full transition-colors duration-500 ${result ? 'bg-gradient-to-r from-brand-400 to-accent-400' : 'bg-slate-200'}`} />
           <StepBadge active={status === 'loading'} done={Boolean(result)} n={2} label="Results" />
         </div>
 
         {!result ? (
           <form onSubmit={handleSubmit}>
-            <div className="mb-6">
+            <div className="mb-6 animate-fade-in">
               <h1 className="flex items-center gap-3 text-3xl font-extrabold tracking-tight text-slate-900">
-                <span className="flex size-11 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 shadow-lg shadow-indigo-500/25">
+                <span className="flex size-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-blue-500 shadow-lg shadow-brand-500/20">
                   <FileSearch className="size-6 text-white" />
                 </span>
                 Resume Scorer
               </h1>
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-slate-400">
                 Paste your resume and the job description — AI does the rest.
               </p>
             </div>
@@ -117,7 +116,7 @@ export function ScorerPage() {
                 )}
               </Button>
               {status === 'loading' && (
-                <p className="animate-pulse text-sm font-semibold text-indigo-600">
+                <p className="animate-pulse text-sm font-semibold text-brand-600">
                   Extracting requirements → matching keywords → generating scorecard…
                 </p>
               )}
@@ -145,12 +144,12 @@ function StepBadge({
   return (
     <div className="flex items-center gap-2">
       <span
-        className={`flex size-7 items-center justify-center rounded-full text-xs font-bold ${
+        className={`flex size-7 items-center justify-center rounded-full text-xs font-bold transition-all duration-300 ${
           done
-            ? 'bg-emerald-500 text-white'
+            ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
             : active
-              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30'
-              : 'bg-slate-200 text-slate-500'
+              ? 'bg-gradient-to-r from-brand-500 to-accent-500 text-white shadow-md shadow-brand-500/30'
+              : 'bg-slate-100 text-slate-400'
         }`}
       >
         {done ? '✓' : n}

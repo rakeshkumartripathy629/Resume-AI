@@ -34,7 +34,6 @@ export function InterviewRunPage() {
   const [answer, setAnswer] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
 
-  // Load interview when landing directly on the URL
   useEffect(() => {
     if (id && (!interview || interview.id !== id)) {
       void dispatch(fetchInterview(id))
@@ -91,25 +90,25 @@ export function InterviewRunPage() {
 
   if (!interview) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-mesh">
         <Navbar authed />
         <main className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center">
-          <Loader2 className="size-8 animate-spin text-indigo-500" />
-          <p className="mt-4 text-sm font-semibold text-slate-500">Loading your interview…</p>
+          <Loader2 className="size-8 animate-spin text-brand-500" />
+          <p className="mt-4 text-sm font-semibold text-slate-400">Loading your interview…</p>
         </main>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-mesh">
       <Navbar authed />
 
       <main className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6">
         {/* Header */}
         <Link
           to="/dashboard"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition-colors hover:text-slate-800"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-400 transition-colors hover:text-slate-700"
         >
           <ArrowLeft className="size-4" /> Exit interview
         </Link>
@@ -119,7 +118,7 @@ export function InterviewRunPage() {
             <h1 className="text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
               {interview.role}
             </h1>
-            <p className="mt-0.5 text-sm text-slate-500">
+            <p className="mt-0.5 text-sm text-slate-400">
               {DIFFICULTY_META[interview.difficulty].icon}{' '}
               {DIFFICULTY_META[interview.difficulty].label} · {totalCount} questions
             </p>
@@ -135,11 +134,11 @@ export function InterviewRunPage() {
         <div className="mt-5">
           <div className="mb-1.5 flex items-center justify-between text-xs font-bold uppercase tracking-wider">
             <span className="text-slate-400">Progress</span>
-            <span className="text-indigo-600">
+            <span className="text-brand-600">
               {answeredCount}/{totalCount} answered
             </span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+          <div className="h-2 overflow-hidden rounded-full bg-slate-100">
             <div
               className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all duration-700"
               style={{ width: `${progressPct}%` }}
@@ -157,12 +156,12 @@ export function InterviewRunPage() {
                 type="button"
                 onClick={() => setActiveIndex(i)}
                 title={done ? 'Answered' : 'Not answered yet'}
-                className={`size-9 rounded-lg border text-sm font-bold transition-all ${
+                className={`size-9 rounded-xl border text-sm font-bold transition-all duration-200 ${
                   i === activeIndex
-                    ? 'border-indigo-600 bg-indigo-600 text-white shadow-md shadow-indigo-500/30'
+                    ? 'border-brand-500 bg-gradient-to-r from-brand-500 to-accent-500 text-white shadow-md shadow-brand-500/25'
                     : done
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300'
-                      : 'border-slate-200 bg-white text-slate-400 hover:border-slate-300'
+                      ? 'border-emerald-200/80 bg-emerald-50 text-emerald-700 hover:border-emerald-300'
+                      : 'border-slate-100 bg-white text-slate-400 hover:border-slate-200'
                 }`}
               >
                 {i + 1}
@@ -180,7 +179,7 @@ export function InterviewRunPage() {
 
         {/* Active question */}
         {activeQuestion && (
-          <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-900/5 sm:p-8">
+          <section className="mt-6 rounded-3xl border border-slate-100 bg-white p-6 shadow-lg shadow-slate-900/5 sm:p-8">
             <span
               className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${
                 QUESTION_TYPE_META[activeQuestion.type].className
@@ -200,7 +199,7 @@ export function InterviewRunPage() {
                   placeholder="Type or paste your answer as you would speak it…"
                   rows={7}
                   disabled={answerStatus === 'loading'}
-                  className="mt-5 w-full resize-y rounded-2xl border border-slate-300 bg-slate-50/50 p-4 text-sm leading-relaxed text-slate-700 placeholder:text-slate-300 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10"
+                  className="mt-5 w-full resize-y rounded-2xl border border-slate-200 bg-slate-50/50 p-4 text-sm leading-relaxed text-slate-700 placeholder:text-slate-300 transition-all focus:border-brand-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-100 focus:shadow-glow-brand"
                 />
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                   <span className="text-xs font-semibold tabular-nums text-slate-400">
@@ -250,7 +249,7 @@ function AnswerFeedback({
 }) {
   if (!evaluation) {
     return (
-      <p className="mt-5 flex items-center gap-2 animate-pulse text-sm font-semibold text-indigo-600">
+      <p className="mt-5 flex items-center gap-2 animate-pulse text-sm font-semibold text-brand-600">
         <Loader2 className="size-4 animate-spin" /> Loading feedback…
       </p>
     )
@@ -260,9 +259,9 @@ function AnswerFeedback({
     evaluation.score >= 7 ? 'text-emerald-600' : evaluation.score >= 5 ? 'text-amber-600' : 'text-red-600'
 
   return (
-    <div className="mt-6 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 to-violet-50/60 p-5">
+    <div className="mt-6 rounded-2xl border border-brand-100 bg-gradient-to-br from-brand-50/80 to-accent-50/60 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-indigo-700">
+        <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-brand-700">
           <BadgeCheck className="size-4" /> AI feedback
         </p>
         <p className={`text-2xl font-extrabold tabular-nums ${scoreColor}`}>

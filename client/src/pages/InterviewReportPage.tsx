@@ -47,11 +47,11 @@ export function InterviewReportPage() {
 
   if (!interview || !report) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-mesh">
         <Navbar authed />
         <main className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center">
-          <Loader2 className="size-8 animate-spin text-indigo-500" />
-          <p className="mt-4 text-sm font-semibold text-slate-500">
+          <Loader2 className="size-8 animate-spin text-brand-500" />
+          <p className="mt-4 text-sm font-semibold text-slate-400">
             {startStatus === 'loading' ? 'Generating your report…' : 'Loading report…'}
           </p>
         </main>
@@ -66,19 +66,19 @@ export function InterviewReportPage() {
   }))
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-mesh">
       <Navbar authed />
 
       <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6">
         <Link
           to="/dashboard"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition-colors hover:text-slate-800"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-400 transition-colors hover:text-slate-700"
         >
           <ArrowLeft className="size-4" /> Back to dashboard
         </Link>
 
         {/* Header */}
-        <div className="mt-4 flex flex-col items-center rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-900/5 sm:p-10">
+        <div className="mt-4 flex flex-col items-center rounded-3xl border border-slate-100 bg-white p-8 shadow-xl shadow-slate-900/5 sm:p-10">
           <span
             title="Mock interview"
             className="flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white shadow-lg shadow-violet-500/25"
@@ -96,7 +96,7 @@ export function InterviewReportPage() {
             <ScoreRing score={report.overallScore} />
           </div>
 
-          <p className="mt-6 max-w-2xl text-center text-[15px] leading-relaxed text-slate-600">
+          <p className="mt-6 max-w-2xl text-center text-[15px] leading-relaxed text-slate-500">
             {report.summary}
           </p>
 
@@ -134,7 +134,7 @@ export function InterviewReportPage() {
               <button
                 type="button"
                 onClick={() => dispatch(clearCurrent())}
-                className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-6 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:from-indigo-700 hover:to-violet-700 active:scale-[0.98]"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand-600 to-accent-600 px-6 text-sm font-semibold text-white shadow-lg shadow-brand-500/25 transition-all hover:from-brand-700 hover:to-accent-700 hover:brightness-110 active:scale-[0.98]"
               >
                 <RotateCcw className="size-4" /> Practice again
               </button>
@@ -142,7 +142,7 @@ export function InterviewReportPage() {
             <Link to="/scorer">
               <button
                 type="button"
-                className="inline-flex h-13 items-center justify-center rounded-xl border border-slate-300 bg-white px-6 text-sm font-semibold text-slate-700 transition-all hover:bg-slate-50 active:scale-[0.98]"
+                className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-600 transition-all hover:border-brand-300 hover:text-brand-600 hover:shadow-sm active:scale-[0.98]"
               >
                 Score my resume next →
               </button>
@@ -151,33 +151,33 @@ export function InterviewReportPage() {
         </div>
 
         {/* Competency radar */}
-        <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+        <section className="mt-8 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm sm:p-8">
           <h2 className="text-lg font-extrabold tracking-tight text-slate-900">
             Competency breakdown
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-slate-400">
             Each dimension scored 0–100 based on your answers.
           </p>
           <div className="mx-auto mt-4 h-80 w-full max-w-xl">
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart data={radarData} outerRadius="72%">
-                <PolarGrid stroke="#e2e8f0" />
+                <PolarGrid stroke="#f1f5f9" />
                 <PolarAngleAxis
                   dataKey="competency"
-                  tick={{ fill: '#475569', fontSize: 12, fontWeight: 600 }}
+                  tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }}
                 />
                 <Radar
                   dataKey="score"
                   stroke="#7c3aed"
                   fill="#7c3aed"
-                  fillOpacity={0.28}
+                  fillOpacity={0.2}
                   strokeWidth={2}
                 />
                 <Tooltip
                   formatter={(value) => [`${value as number}/100`, 'Score']}
                   contentStyle={{
                     borderRadius: 12,
-                    borderColor: '#e2e8f0',
+                    border: '1px solid #f1f5f9',
                     fontSize: 13,
                     fontWeight: 600,
                   }}

@@ -30,11 +30,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           ref={ref}
           id={inputId}
           className={clsx(
-            'h-11 w-full rounded-xl border bg-white text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:outline-none focus:ring-2',
+            'h-11 w-full rounded-xl border bg-white text-sm text-slate-900 placeholder:text-slate-400 transition-all duration-200 focus:outline-none focus:ring-2',
             icon ? 'pl-10 pr-4' : 'px-4',
             error
               ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-              : 'border-slate-300 hover:border-slate-400 focus:border-indigo-500 focus:ring-indigo-100',
+              : 'border-slate-200 hover:border-slate-300 focus:border-brand-400 focus:ring-brand-100 focus:shadow-glow-brand',
             className
           )}
           {...props}

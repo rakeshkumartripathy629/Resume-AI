@@ -1,27 +1,24 @@
-import { Link } from 'react-router-dom'
 import { ArrowLeft, Hammer } from 'lucide-react'
-import { Navbar } from '../components/layout/Navbar'
+import { Link } from 'react-router-dom'
 
-export function ComingSoonPage({ title }: { title: string }) {
+export function ComingSoonPage() {
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Navbar authed />
-      <main className="mx-auto flex max-w-7xl flex-col items-center px-4 py-28 text-center">
-        <span className="flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-xl shadow-indigo-500/25">
-          <Hammer className="size-8 text-white" />
-        </span>
-        <h1 className="mt-6 text-3xl font-extrabold tracking-tight text-slate-900">{title}</h1>
-        <p className="mt-2 max-w-md text-sm text-slate-500">
-          This feature is under construction and will be available in an upcoming phase.
-        </p>
-        <Link
-          to="/dashboard"
-          className="mt-8 inline-flex h-11 items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 transition-all hover:border-indigo-400 hover:text-indigo-600"
-        >
-          <ArrowLeft className="size-4" />
-          Back to Dashboard
-        </Link>
-      </main>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-mesh px-4 text-center">
+      <span className="flex size-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-500 shadow-glow-brand">
+        <Hammer className="size-8" />
+      </span>
+      <h1 className="mt-6 text-3xl font-extrabold tracking-tight text-slate-900">
+        Coming soon
+      </h1>
+      <p className="mt-2 max-w-sm text-sm text-slate-400">
+        This feature is under construction. We&apos;ll have it ready for you soon.
+      </p>
+      <Link
+        to="/dashboard"
+        className="mt-8 inline-flex h-11 items-center gap-2 rounded-2xl bg-gradient-to-r from-brand-600 to-accent-600 px-6 text-sm font-semibold text-white shadow-lg shadow-brand-500/25 transition-all hover:from-brand-700 hover:to-accent-700 active:scale-[0.98]"
+      >
+        <ArrowLeft className="size-4" /> Back to dashboard
+      </Link>
     </div>
   )
 }

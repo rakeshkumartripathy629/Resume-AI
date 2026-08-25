@@ -22,10 +22,10 @@ export function TextAreaCard({
   const ok = value.trim().length >= minChars
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100">
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-all duration-300 focus-within:border-brand-300 focus-within:shadow-glow-brand focus-within:ring-2 focus-within:ring-brand-100">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-sm font-bold text-slate-800">
-          <span className="flex size-7 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+          <span className="flex size-7 items-center justify-center rounded-lg bg-brand-50 text-brand-500">
             {icon}
           </span>
           {title}

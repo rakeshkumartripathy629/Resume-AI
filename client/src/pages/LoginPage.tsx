@@ -8,6 +8,7 @@ import {
   Mail,
   Mic,
   Settings2,
+  ShieldCheck,
   Target,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -73,10 +74,10 @@ export function LoginPage() {
   return (
     <div className="flex min-h-screen bg-white">
       {/* Branding panel */}
-      <div className="relative hidden w-[46%] flex-col justify-between overflow-hidden bg-gradient-to-br from-indigo-700 via-violet-700 to-fuchsia-700 p-12 lg:flex">
-        <div className="pointer-events-none absolute -left-24 -top-24 size-96 rounded-full bg-white/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-32 -right-16 size-[28rem] rounded-full bg-fuchsia-400/20 blur-3xl" />
-        <div className="pointer-events-none absolute left-1/3 top-1/2 size-72 rounded-full bg-indigo-400/20 blur-3xl" />
+      <div className="relative hidden w-[46%] flex-col justify-between overflow-hidden bg-gradient-to-br from-brand-700 via-accent-700 to-pink-700 p-12 lg:flex">
+        <div className="pointer-events-none absolute -left-24 -top-24 size-96 rounded-full bg-white/10 blur-[80px]" />
+        <div className="pointer-events-none absolute -bottom-32 -right-16 size-[28rem] rounded-full bg-pink-400/20 blur-[100px]" />
+        <div className="pointer-events-none absolute left-1/3 top-1/2 size-72 rounded-full bg-brand-400/20 blur-3xl" />
 
         <Logo light />
 
@@ -106,7 +107,7 @@ export function LoginPage() {
 
       {/* Form panel */}
       <div className="flex flex-1 items-center justify-center px-6 py-12">
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md animate-fade-in">
           <div className="mb-8 lg:hidden">
             <Logo />
           </div>
@@ -114,7 +115,7 @@ export function LoginPage() {
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-900">
             {mode === 'signin' ? 'Welcome back' : 'Create your account'}
           </h2>
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-slate-400">
             {mode === 'signin'
               ? 'Sign in to continue building your career.'
               : 'Start scoring resumes and acing interviews in minutes.'}
@@ -223,11 +224,11 @@ export function LoginPage() {
             </Button>
           </form>
 
-          <p className="mt-7 text-center text-sm text-slate-500">
+          <p className="mt-7 text-center text-sm text-slate-400">
             {mode === 'signin' ? "Don't have an account?" : 'Already have an account?'}{' '}
             <button
               type="button"
-              className="font-semibold text-indigo-600 hover:text-indigo-700 hover:underline"
+              className="font-semibold text-brand-600 hover:text-brand-800 hover:underline"
               onClick={() => {
                 setMode(mode === 'signin' ? 'signup' : 'signin')
                 setFormError(null)
@@ -238,7 +239,7 @@ export function LoginPage() {
           </p>
 
           <p className="mt-8 flex items-center justify-center gap-1.5 text-xs text-slate-400">
-            <FileText className="size-3.5" />
+            <ShieldCheck className="size-3.5" />
             Secured by Firebase Authentication
           </p>
         </div>
