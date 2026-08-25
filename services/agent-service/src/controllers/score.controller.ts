@@ -3,6 +3,7 @@ import { env } from '../config/env';
 import { HttpError } from '../middleware/errorHandler';
 import { runResumeScoring } from '../ai/graph';
 import { ScoreResultModel } from '../models/score-result.model';
+import { consumeCoins, refundCoins } from '../lib/coinsClient';
 
 function extractJobMeta(jobDescription: string): { jobTitle: string; company: string } {
   const firstLine = jobDescription.split('\n').find((l) => l.trim().length > 0)?.trim() ?? '';
@@ -29,7 +30,18 @@ export async function scoreController(req: Request, res: Response): Promise<void
     throw new HttpError(400, 'jobDescription is required (min 40 characters)');
   }
 
-  const result = await runResumeScoring(resumeText.trim(), jobDescription.trim());
+  // Charge coins before doing expensive LLM work; refund if it fails.
+  const { balance, cost } = await consumeCoins(uid, 'resume_score', {
+    resumeChars: resumeText.length,
+  });
+
+  let result;
+  try {
+    result = await runResumeScoring(resumeText.trim(), jobDescription.trim());
+  } catch (err) {
+    await refundCoins(uid, cost, 'refund_resume_score', { cause: 'scoring_failed' });
+    throw err;
+  }
 
   const { jobTitle, company } = extractJobMeta(jobDescription);
 
@@ -47,6 +59,7 @@ export async function scoreController(req: Request, res: Response): Promise<void
     data: {
       scoreId: doc._id.toString(),
       createdAt: doc.createdAt,
+      coinBalance: balance,
       ...result,
     },
   });

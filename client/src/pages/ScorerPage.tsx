@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import {
   AlertTriangle,
   ArrowRight,
@@ -11,6 +11,7 @@ import { Button } from '../components/ui/Button'
 import { ScoreResultView } from '../components/scorer/ScoreResultView'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { scoreResume, setJobDescription, setResumeText } from '../features/scorer/scorerSlice'
+import { fetchCoinBalance } from '../features/coins/coinsSlice'
 
 const MIN_RESUME = 80
 const MIN_JD = 40
@@ -21,6 +22,13 @@ export function ScorerPage() {
     (state) => state.scorer
   )
   const [localError, setLocalError] = useState<string | null>(null)
+
+  // Refresh coin balance after a successful (charged) score run
+  useEffect(() => {
+    if (status === 'succeeded') {
+      void dispatch(fetchCoinBalance())
+    }
+  }, [status, dispatch])
 
   function handleSubmit(event: FormEvent): void {
     event.preventDefault()

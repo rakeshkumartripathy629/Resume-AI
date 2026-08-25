@@ -5,6 +5,11 @@ import { env } from './config/env';
 import { asyncHandler, errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { requestContext } from './middleware/requestContext';
 import authRoutes from './routes/auth.routes';
+import coinRoutes from './routes/coin.routes';
+import {
+  internalConsumeController,
+  internalCreditController,
+} from './controllers/coins.controller';
 import { isMongoReady } from './lib/mongoose';
 import { isRedisReady } from './lib/redis';
 
@@ -38,12 +43,18 @@ export function createApp(): Express {
   );
 
   app.use('/api/v1/auth', authRoutes);
+  app.use('/api/v1/coins', coinRoutes);
 
   // Service-to-service routes (gateway blocks /internal/* from external traffic)
   const internalRouter = Router();
   internalRouter.get('/ping', (_req, res) => {
     res.json({ success: true, data: { ok: true } });
   });
+  internalRouter.post(
+    '/coins/consume',
+    asyncHandler(internalConsumeController)
+  );
+  internalRouter.post('/coins/credit', asyncHandler(internalCreditController));
   app.use('/internal', internalRouter);
 
   app.use(notFoundHandler);

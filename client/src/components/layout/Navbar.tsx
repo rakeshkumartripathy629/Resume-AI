@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ChevronDown, LayoutDashboard, LogOut } from 'lucide-react'
+import { ChevronDown, Coins, LayoutDashboard, LogOut } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { useAppDispatch, useAppSelector } from '../../store/hooks'
+import { fetchCoinBalance, clearCoins } from '../../features/coins/coinsSlice'
 import { Logo } from '../Logo'
 
 function initials(name: string): string {
@@ -15,8 +17,18 @@ function initials(name: string): string {
 export function Navbar({ authed = false }: { authed?: boolean }) {
   const { profile, logout } = useAuth()
   const navigate = useNavigate()
+  const dispatch = useAppDispatch()
+  const coinBalance = useAppSelector((state) => state.coins.balance)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (authed) {
+      void dispatch(fetchCoinBalance())
+    } else {
+      dispatch(clearCoins())
+    }
+  }, [authed, profile?.id, dispatch])
 
   useEffect(() => {
     function onClickOutside(event: MouseEvent): void {
@@ -55,7 +67,17 @@ export function Navbar({ authed = false }: { authed?: boolean }) {
         )}
 
         {authed ? (
-          <div className="relative" ref={menuRef}>
+          <div className="flex items-center gap-3">
+            {coinBalance !== null && (
+              <span
+                title="Coin balance — spend coins on AI actions"
+                className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-1.5 text-sm font-bold text-amber-700"
+              >
+                <Coins className="size-4 text-amber-500" />
+                {coinBalance.toLocaleString()}
+              </span>
+            )}
+            <div className="relative" ref={menuRef}>
             <button
               type="button"
               onClick={() => setMenuOpen((open) => !open)}
@@ -100,6 +122,7 @@ export function Navbar({ authed = false }: { authed?: boolean }) {
                 </div>
               </div>
             )}
+            </div>
           </div>
         ) : (
           <Link to="/login">

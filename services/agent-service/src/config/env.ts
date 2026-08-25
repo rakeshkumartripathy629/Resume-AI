@@ -20,6 +20,7 @@ export const env = {
     .split(',')
     .map((o) => o.trim()),
   mongoUri: required('MONGODB_URI', 'mongodb://localhost:27017/resume-builder'),
+  authServiceUrl: required('AUTH_SERVICE_URL', 'http://localhost:4001'),
   firebase: {
     serviceAccountPath: process.env.FIREBASE_SERVICE_ACCOUNT_PATH || '',
     projectId: process.env.FIREBASE_PROJECT_ID || '',

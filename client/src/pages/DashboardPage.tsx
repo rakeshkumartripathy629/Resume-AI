@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { Navbar } from '../components/layout/Navbar'
+import { useAppSelector } from '../store/hooks'
 
 const tools = [
   {
@@ -48,14 +49,9 @@ const tools = [
   },
 ]
 
-const stats = [
-  { label: 'Resumes scored', value: '0' },
-  { label: 'Interviews taken', value: '0' },
-  { label: 'Coin balance', value: '—', icon: Coins },
-]
-
 export function DashboardPage() {
   const { profile, currentUser } = useAuth()
+  const coinBalance = useAppSelector((state) => state.coins.balance)
   const displayName =
     profile?.displayName || profile?.email?.split('@')[0] || currentUser?.email || 'there'
 
@@ -86,22 +82,29 @@ export function DashboardPage() {
 
         {/* Stats */}
         <div className="mt-8 grid gap-4 sm:grid-cols-3">
-          {stats.map(({ label, value, icon: Icon }) => (
-            <div
-              key={label}
-              className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-            >
-              {Icon && (
-                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-500/25">
-                  <Icon className="size-5" />
-                </span>
-              )}
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{label}</p>
-                <p className="mt-0.5 text-2xl font-extrabold text-slate-900">{value}</p>
-              </div>
+          <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Resumes scored</p>
+              <p className="mt-0.5 text-2xl font-extrabold text-slate-900">0</p>
             </div>
-          ))}
+          </div>
+          <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Interviews taken</p>
+              <p className="mt-0.5 text-2xl font-extrabold text-slate-900">0</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-500/25">
+              <Coins className="size-5" />
+            </span>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Coin balance</p>
+              <p className="mt-0.5 text-2xl font-extrabold text-slate-900">
+                {coinBalance ?? '—'}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Tools */}
