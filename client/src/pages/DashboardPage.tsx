@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight,
@@ -9,10 +10,13 @@ import {
   Mic,
   Plus,
   Sparkles,
+  Trophy,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { Navbar } from '../components/layout/Navbar'
-import { useAppSelector } from '../store/hooks'
+import { useAppDispatch, useAppSelector } from '../store/hooks'
+import { fetchCoinBalance } from '../features/coins/coinsSlice'
+import { fetchMyInterviews } from '../features/interview/interviewListSlice'
 
 const tools = [
   {
@@ -51,9 +55,16 @@ const tools = [
 
 export function DashboardPage() {
   const { profile, currentUser } = useAuth()
+  const dispatch = useAppDispatch()
   const coinBalance = useAppSelector((state) => state.coins.balance)
+  const interviewList = useAppSelector((state) => state.interviewList)
   const displayName =
     profile?.displayName || profile?.email?.split('@')[0] || currentUser?.email || 'there'
+
+  useEffect(() => {
+    void dispatch(fetchCoinBalance())
+    void dispatch(fetchMyInterviews())
+  }, [dispatch])
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -90,8 +101,12 @@ export function DashboardPage() {
           </div>
           <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Interviews taken</p>
-              <p className="mt-0.5 text-2xl font-extrabold text-slate-900">0</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Interviews completed</p>
+              <p className="mt-0.5 text-2xl font-extrabold text-slate-900">
+                {interviewList.status === 'loading' && interviewList.total === 0
+                  ? '…'
+                  : interviewList.total}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -133,18 +148,74 @@ export function DashboardPage() {
           ))}
         </div>
 
-        {/* Recent activity */}
+        {/* Recent interviews */}
         <div className="mt-12">
-          <h2 className="text-lg font-bold text-slate-900">Recent activity</h2>
-          <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-white/60 px-6 py-14 text-center">
-            <span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-slate-100">
-              <Sparkles className="size-7 text-slate-400" />
-            </span>
-            <p className="mt-4 font-bold text-slate-700">No activity yet</p>
-            <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500">
-              Score your first resume or take a mock interview — results will show up here.
-            </p>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-slate-900">Recent interviews</h2>
+            {interviewList.items.length > 0 && (
+              <Link
+                to="/interview/new"
+                className="text-sm font-semibold text-indigo-600 transition-colors hover:text-indigo-800"
+              >
+                New interview →
+              </Link>
+            )}
           </div>
+
+          {interviewList.status === 'loading' && interviewList.items.length === 0 ? (
+            <div className="mt-5 rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center text-sm font-semibold text-slate-400">
+              Loading…
+            </div>
+          ) : interviewList.items.length === 0 ? (
+            <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-white/60 px-6 py-14 text-center">
+              <span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-slate-100">
+                <Sparkles className="size-7 text-slate-400" />
+              </span>
+              <p className="mt-4 font-bold text-slate-700">No activity yet</p>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500">
+                Score your first resume or take a mock interview — results will show up here.
+              </p>
+            </div>
+          ) : (
+            <ul className="mt-5 divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              {interviewList.items.map((interview) => (
+                <li key={interview.id}>
+                  <Link
+                    to={
+                      interview.status === 'completed'
+                        ? `/interview/${interview.id}/report`
+                        : `/interview/${interview.id}/run`
+                    }
+                    className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-slate-50"
+                  >
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+                      <Mic className="size-5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold text-slate-900">{interview.role}</p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {new Date(interview.createdAt).toLocaleDateString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                        })}{' '}
+                        · {interview.answeredCount}/{interview.questionCount} answered
+                      </p>
+                    </div>
+                    {interview.overallScore !== null ? (
+                      <span className="flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold tabular-nums text-emerald-700">
+                        <Trophy className="size-3.5" />
+                        {interview.overallScore}/100
+                      </span>
+                    ) : (
+                      <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-700">
+                        In progress
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </main>
     </div>

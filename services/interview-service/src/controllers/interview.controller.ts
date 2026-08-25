@@ -85,6 +85,40 @@ export async function startInterviewController(req: Request, res: Response): Pro
   });
 }
 
+export async function listInterviewsController(req: Request, res: Response): Promise<void> {
+  const uid = requireUid(req);
+  const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10) || 1);
+  const limit = Math.min(20, Math.max(1, parseInt(String(req.query.limit ?? '10'), 10) || 10));
+
+  const [docs, total] = await Promise.all([
+    Interview.find({ userId: uid })
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit),
+    Interview.countDocuments({ userId: uid }),
+  ]);
+
+  res.status(200).json({
+    success: true,
+    data: {
+      items: docs.map((doc) => ({
+        id: doc._id.toString(),
+        role: doc.role,
+        difficulty: doc.difficulty,
+        status: doc.status,
+        questionCount: doc.questions.length,
+        answeredCount: doc.answers.length,
+        overallScore: doc.report?.overallScore ?? null,
+        createdAt: doc.createdAt,
+        completedAt: doc.completedAt ?? null,
+      })),
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    },
+  });
+}
+
 export async function getInterviewController(req: Request, res: Response): Promise<void> {
   const interview = await findOwnInterview(req);
   res.status(200).json({ success: true, data: publicView(interview) });

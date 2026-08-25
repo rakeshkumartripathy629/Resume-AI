@@ -4,6 +4,7 @@ import { requireAuth } from '../middleware/auth';
 import {
   completeInterviewController,
   getInterviewController,
+  listInterviewsController,
   startInterviewController,
   submitAnswerController,
 } from '../controllers/interview.controller';
@@ -11,6 +12,7 @@ import {
 const router = Router();
 
 router.use(requireAuth);
+router.get('/', asyncHandler(listInterviewsController));
 router.post('/start', asyncHandler(startInterviewController));
 router.get('/:id', asyncHandler(getInterviewController));
 router.post('/:id/answer', asyncHandler(submitAnswerController));
