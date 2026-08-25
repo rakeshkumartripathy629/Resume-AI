@@ -8,6 +8,9 @@ import { DashboardPage } from './pages/DashboardPage'
 import { ScorerPage } from './pages/ScorerPage'
 import { BuilderPage } from './pages/BuilderPage'
 import { ComingSoonPage } from './pages/ComingSoonPage'
+import { InterviewSetupPage } from './pages/InterviewSetupPage'
+import { InterviewRunPage } from './pages/InterviewRunPage'
+import { InterviewReportPage } from './pages/InterviewReportPage'
 import { store } from './store'
 
 export default function App() {
@@ -45,7 +48,23 @@ export default function App() {
             path="/interview/new"
             element={
               <ProtectedRoute>
-                <ComingSoonPage title="Mock Interview" />
+                <InterviewSetupPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/interview/:id/run"
+            element={
+              <ProtectedRoute>
+                <InterviewRunPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/interview/:id/report"
+            element={
+              <ProtectedRoute>
+                <InterviewReportPage />
               </ProtectedRoute>
             }
           />

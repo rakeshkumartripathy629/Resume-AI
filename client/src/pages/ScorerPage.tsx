@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { Navbar } from '../components/layout/Navbar'
 import { Button } from '../components/ui/Button'
+import { TextAreaCard } from '../components/ui/TextArea'
 import { ScoreResultView } from '../components/scorer/ScoreResultView'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { scoreResume, setJobDescription, setResumeText } from '../features/scorer/scorerSlice'
@@ -161,53 +162,6 @@ function StepBadge({
       >
         {label}
       </span>
-    </div>
-  )
-}
-
-function TextAreaCard({
-  icon,
-  title,
-  placeholder,
-  value,
-  onChange,
-  minChars,
-  disabled,
-}: {
-  icon: React.ReactNode
-  title: string
-  placeholder: string
-  value: string
-  onChange: (value: string) => void
-  minChars: number
-  disabled?: boolean
-}) {
-  const ok = value.trim().length >= minChars
-
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="flex items-center gap-2 text-sm font-bold text-slate-800">
-          <span className="flex size-7 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
-            {icon}
-          </span>
-          {title}
-        </h3>
-        <span className={`text-xs font-semibold tabular-nums ${ok ? 'text-emerald-600' : 'text-slate-400'}`}>
-          {value.length.toLocaleString()} chars
-        </span>
-      </div>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        disabled={disabled}
-        rows={14}
-        className="w-full resize-y rounded-lg border border-transparent bg-transparent p-1 text-sm leading-relaxed text-slate-700 placeholder:text-slate-300 focus:outline-none"
-      />
-      <p className={`mt-2 text-xs font-medium ${ok ? 'text-emerald-600' : 'text-slate-400'}`}>
-        {ok ? 'Looks good ✓' : `Minimum ${minChars} characters`}
-      </p>
     </div>
   )
 }
