@@ -42,7 +42,7 @@ async function withNodeRetry<T>(fn: () => Promise<T>, label: string, maxAttempts
       const msg = err instanceof Error ? err.message.toLowerCase() : '';
       const isRateLimit = msg.includes('429') || msg.includes('rate limit') || msg.includes('tokens per minute');
       if (isRateLimit && attempt < maxAttempts) {
-        const delay = 8000 * attempt;
+        const delay = 10000 * attempt;
         console.warn(JSON.stringify({ level: 'warn', service: 'agent-service', msg: `${label} rate-limited (attempt ${attempt}/${maxAttempts}), retrying in ${delay}ms` }));
         await sleep(delay);
         continue;
@@ -53,7 +53,7 @@ async function withNodeRetry<T>(fn: () => Promise<T>, label: string, maxAttempts
   throw lastError;
 }
 
-// ── Node 1: Extract Requirements (JD only) ─────────────────────────────────
+// ── Node 1: Extract Requirements ────────────────────────────────────────────
 
 async function extractRequirementsNode(
   state: GraphStateType
@@ -61,8 +61,8 @@ async function extractRequirementsNode(
   const requirements = await withNodeRetry(async () => {
     const llm = getLlm().withStructuredOutput(JobRequirementsSchema);
     return llm.invoke([
-      ['system', 'Extract job requirements from a posting. Normalize tool names. Return structured output.'],
-      ['human', state.jobDescription.slice(0, 2000)],
+      ['system', 'Extract job requirements. Normalize tool names. Be exhaustive with skills and keywords.'],
+      ['human', state.jobDescription.slice(0, 2500)],
     ]);
   }, 'extract_requirements');
   return { requirements };
@@ -76,11 +76,15 @@ async function analyzeMatchNode(state: GraphStateType): Promise<Partial<GraphSta
   const analysis = await withNodeRetry(async () => {
     const llm = getLlm().withStructuredOutput(MatchAnalysisSchema);
     return llm.invoke([
-      ['system', 'Compare candidate resume against job requirements. List present vs missing skills. Check for quantified achievements.'],
+      [
+        'system',
+        'Compare resume against job requirements. Be thorough: check every required skill. ' +
+        'Check for quantified achievements with numbers. Be honest about gaps.',
+      ],
       [
         'human',
         `Requirements:\n${JSON.stringify(state.requirements)}\n\n` +
-        `Resume:\n${state.resumeText.slice(0, 2000)}`,
+        `Resume:\n${state.resumeText.slice(0, 2500)}`,
       ],
     ]);
   }, 'analyze_match');
@@ -95,11 +99,15 @@ async function generateReportNode(state: GraphStateType): Promise<Partial<GraphS
   const result = await withNodeRetry(async () => {
     const llm = getLlm().withStructuredOutput(ScoreResultSchema);
     return llm.invoke([
-      ['system', 'Produce a resume scorecard. Ground scores in analysis data. Keywords 30%, skills 30%, impact 25%, formatting 15%. Verdict: >=80 strong, >=65 good, >=45 needs_work, else poor. Improvements must be actionable.'],
+      [
+        'system',
+        'Produce a resume scorecard. Ground ALL scores in the analysis data. Keywords 30%, skills 30%, impact 25%, formatting 15%. ' +
+        'Verdict: >=80 strong_match, >=65 good, >=45 needs_work, else poor. Improvements must be actionable and specific.',
+      ],
       [
         'human',
         `Requirements:\n${JSON.stringify(state.requirements)}\n\n` +
-        `Analysis:\n${JSON.stringify(state.analysis)}\n\n` +
+        `Match analysis:\n${JSON.stringify(state.analysis)}\n\n` +
         `Resume:\n${state.resumeText.slice(0, 1500)}`,
       ],
     ]);
