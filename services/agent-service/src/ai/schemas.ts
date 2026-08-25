@@ -7,7 +7,7 @@ export const JobRequirementsSchema = z.object({
   softSkills: z.array(z.string()).max(8).describe('Soft skills emphasized in the posting'),
   keywords: z
     .array(z.string())
-    .max(25)
+    .max(30)
     .describe('Important ATS keywords, tools, methodologies, certifications'),
 });
 export type JobRequirements = z.infer<typeof JobRequirementsSchema>;

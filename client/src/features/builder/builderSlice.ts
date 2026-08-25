@@ -2,9 +2,11 @@ import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/tool
 import { api, apiErrorMessage } from '../../lib/api'
 import {
   emptyResumeContent,
+  type CertificationItem,
   type EducationItem,
   type ExperienceItem,
   type PersonalInfo,
+  type ProjectItem,
   type ResumeContent,
   type ResumeDocument,
 } from '../../types/resume'
@@ -17,9 +19,21 @@ interface BuilderState {
   content: ResumeContent
   status: SaveStatus
   error: string | null
+  version: number
+  versions: Array<{ version: number; title: string; savedAt: string }>
 }
 
 type SaveResponse = { success: boolean; data: ResumeDocument }
+
+type VersionsResponse = {
+  success: boolean
+  data: { currentVersion: number; versions: Array<{ version: number; title: string; savedAt: string }> }
+}
+
+type RestoreResponse = {
+  success: boolean
+  data: { id: string; title: string; content: ResumeContent; version: number }
+}
 
 export const saveBuilderResume = createAsyncThunk(
   'builder/save',
@@ -46,12 +60,43 @@ export const saveBuilderResume = createAsyncThunk(
   }
 )
 
+export const fetchVersions = createAsyncThunk(
+  'builder/fetchVersions',
+  async (resumeId: string, { rejectWithValue }) => {
+    try {
+      const response = await api.get<VersionsResponse>(`/resumes/${resumeId}/versions`)
+      return response.data.data
+    } catch (error) {
+      return rejectWithValue(apiErrorMessage(error))
+    }
+  }
+)
+
+export const restoreVersion = createAsyncThunk(
+  'builder/restoreVersion',
+  async (
+    payload: { resumeId: string; version: number },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await api.post<RestoreResponse>(
+        `/resumes/${payload.resumeId}/versions/${payload.version}/restore`
+      )
+      return response.data.data
+    } catch (error) {
+      return rejectWithValue(apiErrorMessage(error))
+    }
+  }
+)
+
 const initialState: BuilderState = {
   id: null,
   title: 'Untitled resume',
   content: emptyResumeContent,
   status: 'idle',
   error: null,
+  version: 1,
+  versions: [],
 }
 
 const builderSlice = createSlice({
@@ -129,6 +174,44 @@ const builderSlice = createSlice({
       state.content.skills = state.content.skills.filter((s) => s !== action.payload)
       state.status = state.status === 'saving' ? 'saving' : 'dirty'
     },
+    addProject(state) {
+      state.content.projects.push({ name: '', description: '', link: '', tech: [] })
+      state.status = state.status === 'saving' ? 'saving' : 'dirty'
+    },
+    updateProject(
+      state,
+      action: PayloadAction<{ index: number; item: Partial<ProjectItem> }>
+    ) {
+      const { index, item } = action.payload
+      const current = state.content.projects[index]
+      if (current) {
+        state.content.projects[index] = { ...current, ...item }
+        state.status = state.status === 'saving' ? 'saving' : 'dirty'
+      }
+    },
+    removeProject(state, action: PayloadAction<number>) {
+      state.content.projects.splice(action.payload, 1)
+      state.status = state.status === 'saving' ? 'saving' : 'dirty'
+    },
+    addCertification(state) {
+      state.content.certifications.push({ name: '', issuer: '', date: '' })
+      state.status = state.status === 'saving' ? 'saving' : 'dirty'
+    },
+    updateCertification(
+      state,
+      action: PayloadAction<{ index: number; item: Partial<CertificationItem> }>
+    ) {
+      const { index, item } = action.payload
+      const current = state.content.certifications[index]
+      if (current) {
+        state.content.certifications[index] = { ...current, ...item }
+        state.status = state.status === 'saving' ? 'saving' : 'dirty'
+      }
+    },
+    removeCertification(state, action: PayloadAction<number>) {
+      state.content.certifications.splice(action.payload, 1)
+      state.status = state.status === 'saving' ? 'saving' : 'dirty'
+    },
     resetBuilder() {
       return initialState
     },
@@ -141,13 +224,23 @@ const builderSlice = createSlice({
       })
       .addCase(saveBuilderResume.fulfilled, (state, action) => {
         state.id = action.payload.id
-        // Keep local content authoritative — only adopt server id/status
+        if (action.payload.version) state.version = action.payload.version
         state.status = state.status === 'dirty' ? 'dirty' : 'saved'
       })
       .addCase(saveBuilderResume.rejected, (state, action) => {
         state.status = 'error'
         state.error =
           (action.payload as string | undefined) ?? action.error.message ?? 'Save failed'
+      })
+      .addCase(fetchVersions.fulfilled, (state, action) => {
+        state.versions = action.payload.versions
+        state.version = action.payload.currentVersion
+      })
+      .addCase(restoreVersion.fulfilled, (state, action) => {
+        state.content = action.payload.content
+        state.title = action.payload.title
+        state.version = action.payload.version
+        state.status = 'saved'
       })
   },
 })
@@ -163,6 +256,12 @@ export const {
   removeEducation,
   addSkill,
   removeSkill,
+  addProject,
+  updateProject,
+  removeProject,
+  addCertification,
+  updateCertification,
+  removeCertification,
   resetBuilder,
 } = builderSlice.actions
 

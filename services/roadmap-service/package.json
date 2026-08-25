@@ -5,7 +5,7 @@
   "description": "Agent service — LangChain/LangGraph resume AI + resumes CRUD",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit"

@@ -1,10 +1,19 @@
 import { model, Schema, Types } from 'mongoose';
 
+export interface ResumeVersionSnapshot {
+  version: number;
+  content: ResumeContent;
+  title: string;
+  savedAt: Date;
+}
+
 export interface IResume {
   userId: string;
   title: string;
   status: 'draft' | 'complete';
   content: ResumeContent;
+  version: number;
+  versions: ResumeVersionSnapshot[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -115,6 +124,23 @@ const certificationSchema = new Schema<CertificationItem>(
   { _id: false }
 )
 
+const resumeVersionSnapshotSchema = new Schema<ResumeVersionSnapshot>(
+  {
+    version: { type: Number, required: true },
+    content: {
+      personalInfo: { type: personalInfoSchema, default: () => ({}) },
+      experience: { type: [experienceSchema], default: [] },
+      education: { type: [educationSchema], default: [] },
+      skills: { type: [String], default: [] },
+      projects: { type: [projectSchema], default: [] },
+      certifications: { type: [certificationSchema], default: [] },
+    },
+    title: { type: String, default: '' },
+    savedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
 const resumeSchema = new Schema<IResume>(
   {
     userId: { type: String, required: true, index: true },
@@ -128,6 +154,8 @@ const resumeSchema = new Schema<IResume>(
       projects: { type: [projectSchema], default: [] },
       certifications: { type: [certificationSchema], default: [] },
     },
+    version: { type: Number, default: 1 },
+    versions: { type: [resumeVersionSnapshotSchema], default: [] },
   },
   { timestamps: true }
 );

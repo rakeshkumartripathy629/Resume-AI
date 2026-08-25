@@ -7,6 +7,7 @@ export type InterviewStatus = 'in_progress' | 'completed';
 export interface IQuestion {
   text: string;
   type: QuestionType;
+  targetSkill: string;
 }
 
 export interface IEvaluation {
@@ -21,6 +22,8 @@ export interface IInterview {
   role: string;
   difficulty: Difficulty;
   jdText: string;
+  roadmapId?: string;
+  missingSkills: string[];
   status: InterviewStatus;
   questions: IQuestion[];
   answers: { questionIndex: number; text: string; submittedAt: Date }[];
@@ -43,12 +46,13 @@ export interface IReport {
   band: 'excellent' | 'good' | 'average' | 'needs_improvement';
   summary: string;
   competencyScores: ICompetencyScores;
+  skillProficiencies: Record<string, number>;
   strengths: string[];
   improvements: string[];
 }
 
 const questionSchema = new Schema<IQuestion>(
-  { text: { type: String, required: true }, type: { type: String, required: true } },
+  { text: { type: String, required: true }, type: { type: String, required: true }, targetSkill: { type: String, default: '' } },
   { _id: false }
 );
 
@@ -79,6 +83,7 @@ const reportSchema = new Schema<IReport>(
     },
     strengths: { type: [String], default: [] },
     improvements: { type: [String], default: [] },
+    skillProficiencies: { type: Schema.Types.Map, of: Number, default: () => ({}) },
   },
   { _id: false }
 );
@@ -89,6 +94,8 @@ const interviewSchema = new Schema<IInterview>(
     role: { type: String, required: true },
     difficulty: { type: String, enum: ['easy', 'medium', 'hard'], default: 'medium' },
     jdText: { type: String, default: '' },
+    roadmapId: { type: String },
+    missingSkills: { type: [String], default: [] },
     status: { type: String, enum: ['in_progress', 'completed'], default: 'in_progress' },
     questions: { type: [questionSchema], default: [] },
     answers: {

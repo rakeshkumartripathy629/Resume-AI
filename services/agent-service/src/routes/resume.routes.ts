@@ -6,6 +6,8 @@ import {
   deleteResumeController,
   getResumeController,
   listResumesController,
+  listVersionsController,
+  restoreVersionController,
   updateResumeController,
 } from '../controllers/resume.controller';
 
@@ -17,5 +19,7 @@ router.post('/', asyncHandler(createResumeController));
 router.get('/:id', asyncHandler(getResumeController));
 router.patch('/:id', asyncHandler(updateResumeController));
 router.delete('/:id', asyncHandler(deleteResumeController));
+router.get('/:id/versions', asyncHandler(listVersionsController));
+router.post('/:id/versions/:version/restore', asyncHandler(restoreVersionController));
 
 export default router;

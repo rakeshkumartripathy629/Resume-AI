@@ -31,9 +31,11 @@ function publicView(doc: Awaited<ReturnType<typeof findOwnInterview>>) {
     role: doc.role,
     difficulty: doc.difficulty,
     status: doc.status,
+    roadmapId: doc.roadmapId ?? null,
+    missingSkills: doc.missingSkills,
     questionCount: doc.questions.length,
     currentQuestionIndex: doc.currentQuestionIndex,
-    questions: doc.questions.map((q) => ({ text: q.text, type: q.type })),
+    questions: doc.questions.map((q) => ({ text: q.text, type: q.type, targetSkill: q.targetSkill })),
     answers: doc.answers,
     evaluations: doc.evaluations,
     report: doc.report,
@@ -44,15 +46,27 @@ function publicView(doc: Awaited<ReturnType<typeof findOwnInterview>>) {
 
 export async function startInterviewController(req: Request, res: Response): Promise<void> {
   const uid = requireUid(req);
-  const { role, difficulty = 'medium', jdText = '' } = (req.body ?? {}) as {
+  const {
+    role,
+    difficulty = 'medium',
+    jdText = '',
+    missingSkills = [],
+    roadmapId,
+    questionCount,
+  } = (req.body ?? {}) as {
     role?: string;
     difficulty?: 'easy' | 'medium' | 'hard';
     jdText?: string;
+    missingSkills?: string[];
+    roadmapId?: string;
+    questionCount?: number;
   };
 
   if (!role || role.trim().length < 2) {
     throw new HttpError(400, 'role is required');
   }
+
+  const resolvedCount = Math.min(10, Math.max(4, questionCount ?? env.defaultQuestionCount));
 
   // Charge coins up-front; refund if question generation fails.
   const { balance } = await consumeCoins(uid, 'interview_start', { role });
@@ -63,7 +77,8 @@ export async function startInterviewController(req: Request, res: Response): Pro
       role: role.trim(),
       difficulty,
       jdText: jdText.trim(),
-      questionCount: env.defaultQuestionCount,
+      questionCount: resolvedCount,
+      missingSkills,
     });
   } catch (err) {
     await refundCoins(uid, 10, 'refund_interview_start', { cause: 'plan_failed', role });
@@ -75,6 +90,8 @@ export async function startInterviewController(req: Request, res: Response): Pro
     role: role.trim(),
     difficulty,
     jdText: jdText.trim().slice(0, 8000),
+    roadmapId: roadmapId || undefined,
+    missingSkills,
     questions: plan.questions,
     evaluations: plan.questions.map(() => null),
   });
@@ -192,7 +209,8 @@ export async function completeInterviewController(req: Request, res: Response): 
   const report = await runInterviewReport({
     role: interview.role,
     difficulty: interview.difficulty,
-    questions: interview.questions.map((q) => ({ text: q.text, type: q.type })),
+    missingSkills: interview.missingSkills,
+    questions: interview.questions.map((q) => ({ text: q.text, type: q.type, targetSkill: q.targetSkill })),
     answers: interview.answers.map((a) => ({
       questionIndex: a.questionIndex,
       text: a.text.slice(0, 3000),

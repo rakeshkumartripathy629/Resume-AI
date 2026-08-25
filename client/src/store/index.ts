@@ -7,6 +7,7 @@ import interviewListReducer from '../features/interview/interviewListSlice'
 import resumeListReducer from '../features/resumes/resumeListSlice'
 import roadmapReducer from '../features/roadmap/roadmapSlice'
 import billingReducer from '../features/billing/billingSlice'
+import tailorReducer from '../features/tailor/tailorSlice'
 
 export const store = configureStore({
   reducer: {
@@ -18,6 +19,7 @@ export const store = configureStore({
     resumeList: resumeListReducer,
     roadmap: roadmapReducer,
     billing: billingReducer,
+    tailor: tailorReducer,
   },
 })
 

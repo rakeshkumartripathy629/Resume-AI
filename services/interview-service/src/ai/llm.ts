@@ -12,8 +12,8 @@ export function getLlm(): ChatOpenAI {
   return new ChatOpenAI({
     model: env.openai.model,
     temperature: 0.2,
-    timeout: 60_000,
-    maxRetries: 2,
+    timeout: 120_000,
+    maxRetries: 5,
     openAIApiKey: env.openai.apiKey,
     ...(env.openai.baseUrl ? { configuration: { baseURL: env.openai.baseUrl } } : {}),
   });

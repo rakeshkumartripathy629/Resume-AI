@@ -38,7 +38,7 @@ const initialState: InterviewState = {
 export const startInterview = createAsyncThunk(
   "interview/start",
   async (
-    payload: { role: string; difficulty: Difficulty; jdText: string },
+    payload: { role: string; difficulty: Difficulty; jdText: string; missingSkills?: string[] },
     { rejectWithValue },
   ) => {
     try {

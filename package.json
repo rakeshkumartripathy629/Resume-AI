@@ -1,0 +1,11 @@
+{
+  "name": "resume-builder",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -c blue,green,yellow,magenta,cyan,red,white -n gateway,auth,agent,interview,roadmap,billing,client \"cd gateway && npm run dev\" \"cd services/auth-service && npm run dev\" \"cd services/agent-service && npm run dev\" \"cd services/interview-service && npm run dev\" \"cd services/roadmap-service && npm run dev\" \"cd services/billing-service && npm run dev\" \"cd client && npm run dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

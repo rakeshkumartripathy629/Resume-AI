@@ -21,7 +21,7 @@ export const env = {
     .map((o) => o.trim()),
   mongoUri: required('MONGODB_URI', 'mongodb://localhost:27017/resume-builder'),
   authServiceUrl: required('AUTH_SERVICE_URL', 'http://localhost:4001'),
-  defaultQuestionCount: parseInt(required('DEFAULT_QUESTION_COUNT', '6'), 10),
+  defaultQuestionCount: parseInt(required('DEFAULT_QUESTION_COUNT', '10'), 10),
   firebase: {
     serviceAccountPath: process.env.FIREBASE_SERVICE_ACCOUNT_PATH || '',
     projectId: process.env.FIREBASE_PROJECT_ID || '',

@@ -4,6 +4,7 @@ export type Difficulty = 'easy' | 'medium' | 'hard'
 export interface InterviewQuestion {
   text: string
   type: QuestionType
+  targetSkill: string
 }
 
 export interface AnswerEvaluation {
@@ -31,6 +32,7 @@ export interface InterviewReport {
   band: 'excellent' | 'good' | 'average' | 'needs_improvement'
   summary: string
   competencyScores: CompetencyScores
+  skillProficiencies: Record<string, number>
   strengths: string[]
   improvements: string[]
 }
@@ -40,6 +42,8 @@ export interface Interview {
   role: string
   difficulty: Difficulty
   status: 'in_progress' | 'completed'
+  roadmapId: string | null
+  missingSkills: string[]
   questionCount: number
   currentQuestionIndex: number
   questions: InterviewQuestion[]

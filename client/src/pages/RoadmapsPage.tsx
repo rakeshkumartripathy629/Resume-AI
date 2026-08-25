@@ -184,8 +184,11 @@ export function RoadmapsPage() {
               Ready to test yourself? Try a mock interview for{' '}
               <strong>{roadmap.targetRole}</strong>.
             </p>
+            <p className="mt-1 text-xs text-slate-400">
+              {roadmap.gapAnalysis.missingSkills.length} skill gaps will be targeted in the interview
+            </p>
             <Link
-              to="/interview/new"
+              to={`/interview/new?role=${encodeURIComponent(roadmap.targetRole)}&difficulty=${roadmap.experienceLevel === 'beginner' ? 'easy' : roadmap.experienceLevel === 'advanced' ? 'hard' : 'medium'}&missingSkills=${encodeURIComponent(roadmap.gapAnalysis.missingSkills.join(','))}`}
               className="mt-3 inline-flex h-11 items-center rounded-2xl bg-gradient-to-r from-brand-600 to-accent-600 px-5 text-sm font-semibold text-white shadow-lg shadow-brand-500/25 transition-all hover:from-brand-700 hover:to-accent-700 hover:brightness-110 active:scale-[0.98]"
             >
               Start mock interview →

@@ -124,6 +124,64 @@ export function ResumePreview() {
         </Section>
       )}
 
+      {/* Projects */}
+      {content.projects.length > 0 && (
+        <Section title="Projects">
+          <div className="space-y-4">
+            {content.projects.map((item, i) => (
+              <div key={i}>
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="text-sm font-bold text-slate-900">
+                    {item.name || 'Project'}
+                    {item.link && (
+                      <span className="ml-2 text-xs font-medium text-indigo-600">{item.link}</span>
+                    )}
+                  </p>
+                </div>
+                {item.description && (
+                  <p className="mt-1 text-sm leading-relaxed text-slate-700">{item.description}</p>
+                )}
+                {item.tech.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {item.tech.map((t) => (
+                      <span
+                        key={t}
+                        className="rounded bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700"
+                      >
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* Certifications */}
+      {content.certifications.length > 0 && (
+        <Section title="Certifications">
+          <div className="space-y-2">
+            {content.certifications.map((item, i) => (
+              <div key={i} className="flex items-baseline justify-between gap-3">
+                <div>
+                  <span className="text-sm font-bold text-slate-900">{item.name || 'Certification'}</span>
+                  {item.issuer && (
+                    <span className="ml-2 text-sm text-slate-600">— {item.issuer}</span>
+                  )}
+                </div>
+                {item.date && (
+                  <span className="shrink-0 text-xs font-medium tabular-nums text-slate-500">
+                    {formatDate(item.date)}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
       {isCompletelyEmpty(content) && (
         <div className="py-16 text-center">
           <p className="text-sm text-slate-400">
@@ -140,7 +198,9 @@ function isCompletelyEmpty(content: ResumeContent): boolean {
     Object.values(content.personalInfo).every((v) => !v) &&
     content.experience.length === 0 &&
     content.education.length === 0 &&
-    content.skills.length === 0
+    content.skills.length === 0 &&
+    content.projects.length === 0 &&
+    content.certifications.length === 0
   )
 }
 

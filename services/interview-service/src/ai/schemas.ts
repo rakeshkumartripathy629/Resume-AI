@@ -6,6 +6,7 @@ export const QuestionPlanSchema = z.object({
       z.object({
         text: z.string().describe('The interview question'),
         type: z.enum(['technical', 'behavioral', 'situational']),
+        targetSkill: z.string().describe('The specific skill or topic this question tests (e.g. "React hooks", "system design", "communication")'),
       })
     )
     .min(4)
@@ -31,6 +32,7 @@ export const InterviewReportSchema = z.object({
     problemSolving: z.number().min(0).max(100),
     confidence: z.number().min(0).max(100),
   }),
+  skillProficiencies: z.record(z.string(), z.number().min(0).max(100)).describe('Proficiency score (0-100) for each skill that was targeted by interview questions. Key = skill name, value = proficiency score.'),
   strengths: z.array(z.string()).max(6),
   improvements: z.array(z.string()).max(6),
 });

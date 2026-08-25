@@ -47,12 +47,31 @@ export async function createOrderController(req: Request, res: Response): Promis
   }
 
   const client = getRazorpayClient();
-  const order = await client.orders.create({
-    amount: plan.amountInPaise,
-    currency: 'INR',
-    receipt: `rcpt_${plan.id}_${Date.now()}`,
-    notes: { uid, planId: plan.id },
-  });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let order: any;
+  try {
+    order = await client.orders.create({
+      amount: plan.amountInPaise,
+      currency: 'INR',
+      receipt: `rcpt_${plan.id}_${Date.now()}`,
+      notes: { uid, planId: plan.id },
+    });
+  } catch (rpErr: unknown) {
+    const rpError = rpErr as { statusCode?: number; error?: { description?: string }; message?: string };
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        service: 'billing-service',
+        msg: 'Razorpay order creation failed',
+        statusCode: rpError.statusCode,
+        detail: rpError.error?.description ?? rpError.message ?? String(rpErr),
+      })
+    );
+    const rpStatus = rpError.statusCode ?? 502;
+    const rpMsg = rpError.error?.description ?? 'Payment gateway error. Please try again later.';
+    throw new HttpError(rpStatus >= 400 && rpStatus < 600 ? rpStatus : 502, rpMsg);
+  }
 
   const payment = await Payment.create({
     userId: uid,

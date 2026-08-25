@@ -12,6 +12,10 @@ import { InterviewRunPage } from './pages/InterviewRunPage'
 import { InterviewReportPage } from './pages/InterviewReportPage'
 import { RoadmapsPage } from './pages/RoadmapsPage'
 import { PricingPage } from './pages/PricingPage'
+import { TailorPage } from './pages/TailorPage'
+import { ScoreHistoryPage } from './pages/ScoreHistoryPage'
+import { TailorHistoryPage } from './pages/TailorHistoryPage'
+import { RoadmapHistoryPage } from './pages/RoadmapHistoryPage'
 import { store } from './store'
 
 export default function App() {
@@ -78,10 +82,42 @@ export default function App() {
             }
           />
           <Route
+            path="/tailor"
+            element={
+              <ProtectedRoute>
+                <TailorPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/pricing"
             element={
               <ProtectedRoute>
                 <PricingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/scores/history"
+            element={
+              <ProtectedRoute>
+                <ScoreHistoryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tailor/history"
+            element={
+              <ProtectedRoute>
+                <TailorHistoryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/roadmaps/history"
+            element={
+              <ProtectedRoute>
+                <RoadmapHistoryPage />
               </ProtectedRoute>
             }
           />

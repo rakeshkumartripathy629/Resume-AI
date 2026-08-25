@@ -6,6 +6,7 @@ import {
   ClipboardList,
   RotateCcw,
   TrendingUp,
+  Sparkles,
 } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { ScoreRing } from './ScoreRing'
@@ -133,9 +134,17 @@ export function ScoreResultView() {
           <RotateCcw className="size-4" />
           Score another resume
         </Button>
-        <Link to="/builder">
-          <Button>Improve it in the Builder</Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link to="/tailor">
+            <Button variant="accent">
+              <Sparkles className="size-4" />
+              Create ATS-Optimized Resume
+            </Button>
+          </Link>
+          <Link to="/builder">
+            <Button>Improve it in the Builder</Button>
+          </Link>
+        </div>
       </div>
     </div>
   )

@@ -17,6 +17,7 @@ import { Navbar } from '../components/layout/Navbar'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { fetchCoinBalance } from '../features/coins/coinsSlice'
 import { fetchMyInterviews } from '../features/interview/interviewListSlice'
+import { fetchScoreCount } from '../features/scorer/scorerSlice'
 
 const tools = [
   {
@@ -58,12 +59,14 @@ export function DashboardPage() {
   const dispatch = useAppDispatch()
   const coinBalance = useAppSelector((state) => state.coins.balance)
   const interviewList = useAppSelector((state) => state.interviewList)
+  const scoreCount = useAppSelector((state) => state.scorer.scoreCount)
   const displayName =
     profile?.displayName || profile?.email?.split('@')[0] || currentUser?.email || 'there'
 
   useEffect(() => {
     void dispatch(fetchCoinBalance())
     void dispatch(fetchMyInterviews())
+    void dispatch(fetchScoreCount())
   }, [dispatch])
 
   return (
@@ -93,18 +96,36 @@ export function DashboardPage() {
 
         {/* Stats */}
         <div className="animate-fade-in delay-100 mt-8 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-all hover:shadow-md hover:border-brand-100">
+          <Link
+            to="/scores/history"
+            className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-all hover:shadow-md hover:border-brand-100 group"
+          >
             <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Resumes scored</p>
-            <p className="mt-1 text-3xl font-extrabold text-slate-900">0</p>
-          </div>
-          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-all hover:shadow-md hover:border-brand-100">
+            <div className="mt-1 flex items-baseline justify-between">
+              <p className="text-3xl font-extrabold text-slate-900">
+                {scoreCount === null ? '…' : scoreCount}
+              </p>
+              <span className="text-xs font-semibold text-brand-500 opacity-0 transition-opacity group-hover:opacity-100">
+                View history →
+              </span>
+            </div>
+          </Link>
+          <Link
+            to="/roadmaps/history"
+            className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-all hover:shadow-md hover:border-brand-100 group"
+          >
             <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Interviews completed</p>
-            <p className="mt-1 text-3xl font-extrabold text-slate-900">
-              {interviewList.status === 'loading' && interviewList.total === 0
-                ? '…'
-                : interviewList.total}
-            </p>
-          </div>
+            <div className="mt-1 flex items-baseline justify-between">
+              <p className="text-3xl font-extrabold text-slate-900">
+                {interviewList.status === 'loading' && interviewList.total === 0
+                  ? '…'
+                  : interviewList.total}
+              </p>
+              <span className="text-xs font-semibold text-brand-500 opacity-0 transition-opacity group-hover:opacity-100">
+                View all →
+              </span>
+            </div>
+          </Link>
           <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-all hover:shadow-md hover:border-amber-200">
             <div className="flex items-center gap-3">
               <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-500/20">
@@ -118,6 +139,28 @@ export function DashboardPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Quick history links */}
+        <div className="animate-fade-in delay-100 mt-4 flex flex-wrap gap-3">
+          <Link
+            to="/scores/history"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition-all hover:border-brand-300 hover:text-brand-600 hover:shadow-sm"
+          >
+            <FileSearch className="size-3.5" /> Score history
+          </Link>
+          <Link
+            to="/tailor/history"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition-all hover:border-brand-300 hover:text-brand-600 hover:shadow-sm"
+          >
+            <FileSearch className="size-3.5" /> Tailoring history
+          </Link>
+          <Link
+            to="/roadmaps/history"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition-all hover:border-brand-300 hover:text-brand-600 hover:shadow-sm"
+          >
+            <Map className="size-3.5" /> Roadmap history
+          </Link>
         </div>
 
         {/* Tools */}

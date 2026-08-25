@@ -187,6 +187,11 @@ export function InterviewRunPage() {
             >
               Q{activeIndex + 1} · {QUESTION_TYPE_META[activeQuestion.type].label}
             </span>
+            {activeQuestion.targetSkill && (
+              <span className="ml-2 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[11px] font-semibold text-slate-500">
+                🎯 {activeQuestion.targetSkill}
+              </span>
+            )}
             <p className="mt-3 text-lg font-bold leading-snug text-slate-900 sm:text-xl">
               {activeQuestion.text}
             </p>

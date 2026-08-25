@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, ArrowRight, BriefcaseBusiness, Coins, Loader2, Mic, Target } from 'lucide-react'
+import { useState, useMemo, type FormEvent } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { AlertTriangle, ArrowRight, BriefcaseBusiness, Coins, Loader2, Mic, Target, Sparkles } from 'lucide-react'
 import { Navbar } from '../components/layout/Navbar'
 import { Button } from '../components/ui/Button'
 import { TextAreaCard } from '../components/ui/TextArea'
@@ -11,19 +11,28 @@ import { DIFFICULTY_META, type Difficulty } from '../types/interview'
 
 const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard']
 const INTERVIEW_COST = 10
-const QUESTION_COUNT = 6
+const QUESTION_COUNT = 10
 
 export function InterviewSetupPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const dispatch = useAppDispatch()
   const { startStatus, error } = useAppSelector((state) => state.interview)
-  const [role, setRole] = useState('')
-  const [difficulty, setDifficulty] = useState<Difficulty>('medium')
+
+  const urlRole = searchParams.get('role') ?? ''
+  const urlDifficulty = (searchParams.get('difficulty') as Difficulty) || 'medium'
+  const urlMissingSkills = searchParams.get('missingSkills')?.split(',').filter(Boolean) ?? []
+
+  const [role, setRole] = useState(urlRole)
+  const [difficulty, setDifficulty] = useState<Difficulty>(urlDifficulty)
   const [jdText, setJdText] = useState('')
+  const [missingSkills] = useState<string[]>(urlMissingSkills)
+
+  const validDifficulty = DIFFICULTIES.includes(difficulty) ? difficulty : 'medium'
 
   function handleSubmit(event: FormEvent): void {
     event.preventDefault()
-    void dispatch(startInterview({ role: role.trim(), difficulty, jdText }))
+    void dispatch(startInterview({ role: role.trim(), difficulty: validDifficulty, jdText, missingSkills }))
       .unwrap()
       .then((interview) => {
         dispatch(coinSpent(INTERVIEW_COST))
@@ -52,6 +61,28 @@ export function InterviewSetupPage() {
             Our AI will ask you {QUESTION_COUNT} role-specific questions and grade every answer.
           </p>
         </div>
+
+        {missingSkills.length > 0 && (
+          <div className="mb-6 animate-fade-in rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5">
+            <div className="flex items-center gap-2 text-sm font-bold text-emerald-700">
+              <Sparkles className="size-4" />
+              Skill gap targets loaded from your roadmap
+            </div>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {missingSkills.map((skill) => (
+                <span
+                  key={skill}
+                  className="rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-emerald-700 shadow-sm"
+                >
+                  {skill}
+                </span>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-emerald-600">
+              At least 60% of questions will target these skills
+            </p>
+          </div>
+        )}
 
         <form
           onSubmit={handleSubmit}

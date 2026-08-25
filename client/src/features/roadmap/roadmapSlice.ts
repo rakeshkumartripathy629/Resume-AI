@@ -31,16 +31,33 @@ export interface Roadmap {
   createdAt: string
 }
 
+export interface RoadmapHistoryItem {
+  id: string
+  targetRole: string
+  experienceLevel: string
+  phaseCount: number
+  createdAt: string
+}
+
 interface RoadmapState {
   current: Roadmap | null
   status: 'idle' | 'loading' | 'succeeded' | 'failed'
   error: string | null
+  history: RoadmapHistoryItem[]
+  historyStatus: 'idle' | 'loading' | 'succeeded' | 'failed'
+}
+
+interface RoadmapListResponse {
+  success: boolean
+  data: { items: RoadmapHistoryItem[] }
 }
 
 const initialState: RoadmapState = {
   current: null,
   status: 'idle',
   error: null,
+  history: [],
+  historyStatus: 'idle',
 }
 
 export const generateRoadmap = createAsyncThunk(
@@ -59,6 +76,18 @@ export const generateRoadmap = createAsyncThunk(
         payload
       )
       return response.data.data
+    } catch (error) {
+      return rejectWithValue(apiErrorMessage(error))
+    }
+  }
+)
+
+export const fetchRoadmaps = createAsyncThunk(
+  'roadmap/fetchRoadmaps',
+  async (_: void, { rejectWithValue }) => {
+    try {
+      const response = await api.get<RoadmapListResponse>('/roadmaps/mine')
+      return response.data.data.items
     } catch (error) {
       return rejectWithValue(apiErrorMessage(error))
     }
@@ -89,6 +118,16 @@ const roadmapSlice = createSlice({
           (action.payload as string | undefined) ??
           action.error.message ??
           'Failed to generate roadmap'
+      })
+      .addCase(fetchRoadmaps.pending, (state) => {
+        state.historyStatus = 'loading'
+      })
+      .addCase(fetchRoadmaps.fulfilled, (state, action) => {
+        state.historyStatus = 'succeeded'
+        state.history = action.payload
+      })
+      .addCase(fetchRoadmaps.rejected, (state) => {
+        state.historyStatus = 'failed'
       })
   },
 })

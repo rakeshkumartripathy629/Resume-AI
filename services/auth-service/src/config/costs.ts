@@ -1,5 +1,6 @@
 export const COIN_COSTS = {
   resume_score: 5,
+  resume_tailor: 15,
   interview_start: 10,
   roadmap_generate: 8,
 } as const;

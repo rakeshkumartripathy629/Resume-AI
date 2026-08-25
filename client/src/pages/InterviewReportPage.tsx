@@ -6,6 +6,7 @@ import {
   CircleAlert,
   Loader2,
   RotateCcw,
+  Target,
   Trophy,
 } from 'lucide-react'
 import {
@@ -186,6 +187,41 @@ export function InterviewReportPage() {
             </ResponsiveContainer>
           </div>
         </section>
+
+        {/* Skill gap proficiency */}
+        {Object.keys(report.skillProficiencies).length > 0 && (
+          <section className="mt-8 rounded-3xl border border-emerald-100 bg-white p-6 shadow-sm sm:p-8">
+            <h2 className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-slate-900">
+              <Target className="size-5 text-emerald-600" /> Skill gap proficiency
+            </h2>
+            <p className="mt-1 text-sm text-slate-400">
+              Your performance on each targeted skill gap from your roadmap.
+            </p>
+            <div className="mt-5 space-y-3">
+              {Object.entries(report.skillProficiencies)
+                .sort(([, a], [, b]) => b - a)
+                .map(([skill, score]) => {
+                  const pct = Math.min(100, Math.max(0, Math.round(score)))
+                  const color =
+                    pct >= 80 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-500' : 'bg-red-500'
+                  return (
+                    <div key={skill}>
+                      <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
+                        <span>{skill}</span>
+                        <span className="tabular-nums text-slate-500">{pct}%</span>
+                      </div>
+                      <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className={`h-full rounded-full transition-all duration-700 ${color}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+            </div>
+          </section>
+        )}
       </main>
     </div>
   )
