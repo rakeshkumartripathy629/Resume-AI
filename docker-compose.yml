@@ -1,31 +1,147 @@
+# Full local stack. Requires Docker Desktop running.
+#   docker compose up -d --build
+# Client:      http://localhost:5173
+# Gateway API: http://localhost:4000
+#
+# Firebase + OpenAI + Razorpay credentials are injected via the environment
+# section below (or a root .env file — see .env.example at repo root).
+
 services:
   mongo:
     image: mongo:7
-    container_name: resume-builder-mongo
-    restart: unless-stopped
+    container_name: rb-mongo
     ports:
-      - "27017:27017"
+      - '27017:27017'
     volumes:
       - mongo-data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      test: ['CMD', 'mongosh', '--eval', 'db.adminCommand("ping")']
       interval: 10s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
-    container_name: resume-builder-redis
-    restart: unless-stopped
+    container_name: rb-redis
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - redis-data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
+
+  auth-service:
+    build: ./services/auth-service
+    environment:
+      - PORT=4001
+      - CLIENT_ORIGIN=http://localhost:5173
+      - MONGODB_URI=mongodb://mongo:27017/resume-builder
+      - REDIS_URL=redis://redis:6379
+      - SESSION_TTL_SECONDS=604800
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL}
+      - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY}
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  agent-service:
+    build: ./services/agent-service
+    environment:
+      - PORT=4002
+      - CLIENT_ORIGIN=http://localhost:5173
+      - MONGODB_URI=mongodb://mongo:27017/resume-builder
+      - AUTH_SERVICE_URL=http://auth-service:4001
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL}
+      - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY}
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  interview-service:
+    build: ./services/interview-service
+    environment:
+      - PORT=4003
+      - CLIENT_ORIGIN=http://localhost:5173
+      - MONGODB_URI=mongodb://mongo:27017/resume-builder
+      - AUTH_SERVICE_URL=http://auth-service:4001
+      - DEFAULT_QUESTION_COUNT=6
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL}
+      - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY}
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  roadmap-service:
+    build: ./services/roadmap-service
+    environment:
+      - PORT=4004
+      - CLIENT_ORIGIN=http://localhost:5173
+      - MONGODB_URI=mongodb://mongo:27017/resume-builder
+      - AUTH_SERVICE_URL=http://auth-service:4001
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL}
+      - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY}
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  billing-service:
+    build: ./services/billing-service
+    environment:
+      - PORT=4005
+      - CLIENT_ORIGIN=http://localhost:5173
+      - MONGODB_URI=mongodb://mongo:27017/resume-builder
+      - AUTH_SERVICE_URL=http://auth-service:4001
+      - RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}
+      - RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET}
+      - RAZORPAY_WEBHOOK_SECRET=${RAZORPAY_WEBHOOK_SECRET}
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL}
+      - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY}
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  gateway:
+    build: ./gateway
+    ports:
+      - '4000:4000'
+    environment:
+      - PORT=4000
+      - NODE_ENV=production
+      - CLIENT_ORIGIN=http://localhost:5173
+      - AUTH_SERVICE_URL=http://auth-service:4001
+      - AGENT_SERVICE_URL=http://agent-service:4002
+      - INTERVIEW_SERVICE_URL=http://interview-service:4003
+      - ROADMAP_SERVICE_URL=http://roadmap-service:4004
+      - BILLING_SERVICE_URL=http://billing-service:4005
+    depends_on:
+      - auth-service
+      - agent-service
+      - interview-service
+      - roadmap-service
+      - billing-service
+
+  client:
+    build: ./client
+    ports:
+      - '5173:80'
+    depends_on:
+      - gateway
 
 volumes:
   mongo-data:
