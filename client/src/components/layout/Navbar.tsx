@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ChevronDown, Coins, LayoutDashboard, LogOut } from 'lucide-react'
+import { ChevronDown, Coins, LayoutDashboard, LogOut, Plus } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { fetchCoinBalance, clearCoins } from '../../features/coins/coinsSlice'
@@ -77,6 +77,13 @@ export function Navbar({ authed = false }: { authed?: boolean }) {
                 {coinBalance.toLocaleString()}
               </span>
             )}
+            <Link
+              to="/pricing"
+              title="Buy more coins"
+              className="flex size-8 items-center justify-center rounded-full border border-amber-200 bg-white text-amber-600 shadow-sm transition-colors hover:bg-amber-50"
+            >
+              <Plus className="size-4" />
+            </Link>
             <div className="relative" ref={menuRef}>
             <button
               type="button"

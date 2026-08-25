@@ -11,6 +11,7 @@ import { InterviewSetupPage } from './pages/InterviewSetupPage'
 import { InterviewRunPage } from './pages/InterviewRunPage'
 import { InterviewReportPage } from './pages/InterviewReportPage'
 import { RoadmapsPage } from './pages/RoadmapsPage'
+import { PricingPage } from './pages/PricingPage'
 import { store } from './store'
 
 export default function App() {
@@ -73,6 +74,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <RoadmapsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pricing"
+            element={
+              <ProtectedRoute>
+                <PricingPage />
               </ProtectedRoute>
             }
           />
