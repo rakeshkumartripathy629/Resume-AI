@@ -50,7 +50,7 @@ export async function tailorController(req: Request, res: Response): Promise<voi
     jobDescription: jobDescription.trim().slice(0, 8000),
     jobTitle,
     company,
-    tailoredResume: result.tailoredResume,
+    tailoredResume: result.fullResume,
     atsScore: result.atsAnalysis.overallScore,
     atsBreakdown: result.atsAnalysis.breakdown,
     matchedKeywords: result.atsAnalysis.matchedKeywords,
@@ -61,7 +61,9 @@ export async function tailorController(req: Request, res: Response): Promise<voi
     success: true,
     data: {
       coinBalance: balance,
-      ...result,
+      tailoredResume: result.fullResume,
+      atsAnalysis: result.atsAnalysis,
+      tailoringNotes: [],
     },
   });
 }

@@ -42,7 +42,7 @@ async function withNodeRetry<T>(fn: () => Promise<T>, label: string, maxAttempts
       const msg = err instanceof Error ? err.message.toLowerCase() : '';
       const isRateLimit = msg.includes('429') || msg.includes('rate limit') || msg.includes('tokens per minute');
       if (isRateLimit && attempt < maxAttempts) {
-        const delay = 5000 * attempt;
+        const delay = 8000 * attempt;
         console.warn(JSON.stringify({ level: 'warn', service: 'agent-service', msg: `${label} rate-limited (attempt ${attempt}/${maxAttempts}), retrying in ${delay}ms` }));
         await sleep(delay);
         continue;
@@ -53,7 +53,7 @@ async function withNodeRetry<T>(fn: () => Promise<T>, label: string, maxAttempts
   throw lastError;
 }
 
-// ── Node 1: Extract Requirements (small input: JD only) ────────────────────
+// ── Node 1: Extract Requirements (JD only) ─────────────────────────────────
 
 async function extractRequirementsNode(
   state: GraphStateType
@@ -61,67 +61,46 @@ async function extractRequirementsNode(
   const requirements = await withNodeRetry(async () => {
     const llm = getLlm().withStructuredOutput(JobRequirementsSchema);
     return llm.invoke([
-      [
-        'system',
-        'You are an expert technical recruiter. Extract the true requirements from a job posting. ' +
-          'Be precise: only include skills/keywords the posting actually mentions or clearly implies. ' +
-          'Normalize tool names (e.g. "React.js" -> "React").',
-      ],
-      ['human', `Job description:\n\n${state.jobDescription.slice(0, 3000)}`],
+      ['system', 'Extract job requirements from a posting. Normalize tool names. Return structured output.'],
+      ['human', state.jobDescription.slice(0, 2000)],
     ]);
   }, 'extract_requirements');
   return { requirements };
 }
 
-// ── Node 2: Analyze Match (medium input: trim both JD and resume) ──────────
+// ── Node 2: Analyze Match ───────────────────────────────────────────────────
 
 async function analyzeMatchNode(state: GraphStateType): Promise<Partial<GraphStateType>> {
-  await sleep(5000);
+  await sleep(30000);
 
   const analysis = await withNodeRetry(async () => {
     const llm = getLlm().withStructuredOutput(MatchAnalysisSchema);
     return llm.invoke([
-      [
-        'system',
-        'You are a meticulous ATS (applicant tracking system). Compare the candidate resume against ' +
-          'the job requirements. List exactly which required skills and keywords are present vs missing. ' +
-          'Check whether achievements include numbers/metrics. Note formatting problems only if real.',
-      ],
+      ['system', 'Compare candidate resume against job requirements. List present vs missing skills. Check for quantified achievements.'],
       [
         'human',
-        `Extracted requirements:\n${JSON.stringify(state.requirements, null, 2)}\n\n` +
-          `Job description:\n${state.jobDescription.slice(0, 1500)}\n\n` +
-          `Candidate resume:\n${state.resumeText.slice(0, 3000)}`,
+        `Requirements:\n${JSON.stringify(state.requirements)}\n\n` +
+        `Resume:\n${state.resumeText.slice(0, 2000)}`,
       ],
     ]);
   }, 'analyze_match');
   return { analysis };
 }
 
-// ── Node 3: Generate Report (small input: rely on analysis data) ────────────
+// ── Node 3: Generate Report ─────────────────────────────────────────────────
 
 async function generateReportNode(state: GraphStateType): Promise<Partial<GraphStateType>> {
-  await sleep(5000);
+  await sleep(30000);
 
   const result = await withNodeRetry(async () => {
     const llm = getLlm().withStructuredOutput(ScoreResultSchema);
     return llm.invoke([
-      [
-        'system',
-        'You are a senior technical recruiter producing the final resume scorecard. ' +
-          'Ground every category score in the provided analysis data — do not invent facts. ' +
-          'Calibrate scores honestly: keywordMatch should track keyword coverage closely; ' +
-          'experienceImpact rewards quantified achievements; formattingClarity penalizes listed issues. ' +
-          'Improvements must be specific and actionable (what to add/change, where). ' +
-          'overallScore is a weighted blend of the four categories (keywords 30%, skills 30%, impact 25%, formatting 15%). ' +
-          'verdict thresholds: >=80 strong_match, >=65 good, >=45 needs_work, else poor.',
-      ],
+      ['system', 'Produce a resume scorecard. Ground scores in analysis data. Keywords 30%, skills 30%, impact 25%, formatting 15%. Verdict: >=80 strong, >=65 good, >=45 needs_work, else poor. Improvements must be actionable.'],
       [
         'human',
-        `Requirements:\n${JSON.stringify(state.requirements, null, 2)}\n\n` +
-          `Match analysis:\n${JSON.stringify(state.analysis, null, 2)}\n\n` +
-          `Job description:\n${state.jobDescription.slice(0, 1000)}\n\n` +
-          `Resume:\n${state.resumeText.slice(0, 2000)}`,
+        `Requirements:\n${JSON.stringify(state.requirements)}\n\n` +
+        `Analysis:\n${JSON.stringify(state.analysis)}\n\n` +
+        `Resume:\n${state.resumeText.slice(0, 1500)}`,
       ],
     ]);
   }, 'generate_report');

@@ -1,25 +1,19 @@
 import { z } from 'zod';
 
 export const JobRequirementsSchema = z.object({
-  roleTitle: z.string().describe('Job title from the posting'),
-  seniority: z.string().describe('Seniority level, e.g. junior / mid / senior / staff'),
-  hardSkills: z.array(z.string()).max(15).describe('Technical skills the role requires'),
-  softSkills: z.array(z.string()).max(8).describe('Soft skills emphasized in the posting'),
-  keywords: z
-    .array(z.string())
-    .max(30)
-    .describe('Important ATS keywords, tools, methodologies, certifications'),
+  roleTitle: z.string().describe('Job title'),
+  seniority: z.string().describe('junior / mid / senior / staff'),
+  hardSkills: z.array(z.string()).max(10).describe('Required technical skills'),
+  softSkills: z.array(z.string()).max(5).describe('Soft skills'),
+  keywords: z.array(z.string()).max(15).describe('ATS keywords'),
 });
 export type JobRequirements = z.infer<typeof JobRequirementsSchema>;
 
 export const MatchAnalysisSchema = z.object({
-  matchedSkills: z.array(z.string()).max(20),
-  missingSkills: z.array(z.string()).max(15),
-  matchedKeywords: z.array(z.string()).max(30),
-  missingKeywords: z.array(z.string()).max(20),
+  matchedSkills: z.array(z.string()).max(10),
+  missingSkills: z.array(z.string()).max(10),
   hasQuantifiedAchievements: z.boolean(),
-  formattingIssues: z.array(z.string()).max(8),
-  evidenceNotes: z.string().describe('Short notes citing concrete resume evidence'),
+  evidenceNotes: z.string().describe('Brief evidence notes'),
 });
 export type MatchAnalysis = z.infer<typeof MatchAnalysisSchema>;
 
@@ -31,10 +25,10 @@ export const ScoreResultSchema = z.object({
     experienceImpact: z.number().min(0).max(100),
     formattingClarity: z.number().min(0).max(100),
   }),
-  summary: z.string().describe('2-3 sentence executive summary of the match'),
-  strengths: z.array(z.string()).max(6),
-  improvements: z.array(z.string()).max(8).describe('Prioritized, actionable suggestions'),
-  missingKeywords: z.array(z.string()).max(15),
+  summary: z.string().describe('2-3 sentence summary'),
+  strengths: z.array(z.string()).max(4),
+  improvements: z.array(z.string()).max(5).describe('Actionable suggestions'),
+  missingKeywords: z.array(z.string()).max(10),
   verdict: z.enum(['strong_match', 'good', 'needs_work', 'poor']),
 });
 export type ScoreResult = z.infer<typeof ScoreResultSchema>;
