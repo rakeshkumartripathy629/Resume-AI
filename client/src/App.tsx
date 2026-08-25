@@ -7,10 +7,10 @@ import { HomePage } from './pages/HomePage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ScorerPage } from './pages/ScorerPage'
 import { BuilderPage } from './pages/BuilderPage'
-import { ComingSoonPage } from './pages/ComingSoonPage'
 import { InterviewSetupPage } from './pages/InterviewSetupPage'
 import { InterviewRunPage } from './pages/InterviewRunPage'
 import { InterviewReportPage } from './pages/InterviewReportPage'
+import { RoadmapsPage } from './pages/RoadmapsPage'
 import { store } from './store'
 
 export default function App() {
@@ -72,7 +72,7 @@ export default function App() {
             path="/roadmaps"
             element={
               <ProtectedRoute>
-                <ComingSoonPage title="Career Roadmap" />
+                <RoadmapsPage />
               </ProtectedRoute>
             }
           />
