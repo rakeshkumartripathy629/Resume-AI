@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage'
 import { HomePage } from './pages/HomePage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ScorerPage } from './pages/ScorerPage'
+import { BuilderPage } from './pages/BuilderPage'
 import { ComingSoonPage } from './pages/ComingSoonPage'
 import { store } from './store'
 
@@ -36,7 +37,7 @@ export default function App() {
             path="/builder"
             element={
               <ProtectedRoute>
-                <ComingSoonPage title="Resume Builder" />
+                <BuilderPage />
               </ProtectedRoute>
             }
           />
