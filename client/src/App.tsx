@@ -4,6 +4,7 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { LoginPage } from './pages/LoginPage'
 import { HomePage } from './pages/HomePage'
 import { DashboardPage } from './pages/DashboardPage'
+import { ComingSoonPage } from './pages/ComingSoonPage'
 
 export default function App() {
   return (
@@ -16,6 +17,38 @@ export default function App() {
           element={
             <ProtectedRoute>
               <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/scorer"
+          element={
+            <ProtectedRoute>
+              <ComingSoonPage title="Resume Scorer" />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/builder"
+          element={
+            <ProtectedRoute>
+              <ComingSoonPage title="Resume Builder" />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/interview/new"
+          element={
+            <ProtectedRoute>
+              <ComingSoonPage title="Mock Interview" />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/roadmaps"
+          element={
+            <ProtectedRoute>
+              <ComingSoonPage title="Career Roadmap" />
             </ProtectedRoute>
           }
         />
