@@ -23,6 +23,16 @@ api.interceptors.response.use(
       await signOut(firebaseAuth)
       window.location.href = '/login'
     }
+    // Auto-retry on 503 (service starting up)
+    if (error.response?.status === 503) {
+      const config = error.config
+      config.__retryCount = config.__retryCount || 0
+      if (config.__retryCount < 5) {
+        config.__retryCount++
+        await new Promise((r) => setTimeout(r, 3000))
+        return api(config)
+      }
+    }
     return Promise.reject(error)
   }
 )
