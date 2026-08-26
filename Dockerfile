@@ -33,7 +33,7 @@ COPY gateway/ gateway/
 COPY services/ services/
 COPY client/ client/
 
-# Build client at build time (VITE_API_BASE_URL=/api/v1 since same origin)
+# Build client at build time
 ARG VITE_API_BASE_URL=/api/v1
 ARG VITE_FIREBASE_API_KEY=AIzaSyA4wnhjWSONMFVf-Lb0JaNIlkxu8_gYTX8
 ARG VITE_FIREBASE_AUTH_DOMAIN=swiggy-37641.firebaseapp.com
@@ -42,7 +42,7 @@ ARG VITE_FIREBASE_STORAGE_BUCKET=swiggy-37641.firebasestorage.app
 ARG VITE_FIREBASE_MESSAGING_SENDER_ID=572519364833
 ARG VITE_FIREBASE_APP_ID=1:572519364833:web:3f1e319f0c9d518f101fa0
 
-RUN cd client && npx vite build && cd ..
+RUN cd client && npx vite build 2>&1; echo "BUILD_EXIT=$?"
 
 EXPOSE 10000
 
