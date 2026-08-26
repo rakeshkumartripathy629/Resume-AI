@@ -2,7 +2,11 @@ FROM node:20-slim
 
 WORKDIR /app
 
+# Root-level dependencies (for combined-server.ts)
 COPY package.json package-lock.json* ./
+RUN npm install --omit=dev
+
+# Service dependencies
 COPY gateway/package.json gateway/
 COPY services/auth-service/package.json services/auth-service/
 COPY services/agent-service/package.json services/agent-service/
