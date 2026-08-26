@@ -39,10 +39,7 @@ app.use((req, _res, next) => {
 // Billing webhook raw body (before JSON)
 app.post('/api/v1/billing/webhook/razorpay', express.raw({ type: 'application/json' }));
 
-// Health + root — IMMEDIATE (Render port detection)
-app.get('/', (_req, res) => {
-  res.json({ status: 'ok', service: 'combined-server', uptime: process.uptime() });
-});
+// Health — IMMEDIATE (Render port detection)
 app.get('/health', (_req, res) => {
   res.json({
     success: true,
