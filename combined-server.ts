@@ -12,8 +12,6 @@ import { randomUUID } from 'crypto';
 import path from 'path';
 import fs from 'fs';
 
-// ── Load env ──────────────────────────────────────────────────────────
-
 const PORT = parseInt(process.env.PORT || '10000', 10);
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/resume-builder';
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
@@ -28,15 +26,60 @@ process.env.REDIS_URL = REDIS_URL;
 process.env.CLIENT_ORIGIN = CLIENT_ORIGIN;
 process.env.SESSION_TTL_SECONDS = String(SESSION_TTL);
 
-// ── Bootstrap ─────────────────────────────────────────────────────────
+const app = express();
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(cors({ origin: clientOrigins, credentials: true }));
+app.use(express.json({ limit: '5mb' }));
+app.use((req, _res, next) => {
+  (req as any).requestId = req.headers['x-request-id'] || randomUUID();
+  next();
+});
 
-async function bootstrap() {
-  // 1. Connect MongoDB
+// Billing webhook raw body (before JSON)
+app.post('/api/v1/billing/webhook/razorpay', express.raw({ type: 'application/json' }));
+
+// Health + root (immediate — Render detects port)
+app.get('/', (_req, res) => {
+  res.json({ status: 'ok', service: 'combined-server', uptime: process.uptime() });
+});
+app.get('/health', (_req, res) => {
+  res.json({
+    success: true,
+    data: {
+      service: 'combined-server',
+      status: 'ok',
+      uptime: process.uptime(),
+      mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    },
+  });
+});
+
+// Placeholder 404 (replaced after routes load)
+app.use('/api/*', (_req, res) => {
+  res.status(503).json({ success: false, error: 'Routes still loading...' });
+});
+
+// Start server IMMEDIATELY so Render detects the port
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server listening on port ${PORT}`);
+});
+
+// Internal app for inter-service calls
+const internalApp = express();
+internalApp.use(express.json({ limit: '1mb' }));
+const internalServer = internalApp.listen(4001, '0.0.0.0', () => {
+  console.log(`✅ Internal server on port 4001`);
+});
+
+// ── Load everything in background ─────────────────────────────────────
+
+async function loadServices() {
   console.log('⏳ Connecting to MongoDB...');
-  await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
+  await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 15000 });
   console.log('✅ MongoDB connected');
 
-  // 2. Connect Redis (optional)
   let redisClient: ReturnType<typeof createClient> | null = null;
   try {
     redisClient = createClient({ url: REDIS_URL });
@@ -47,35 +90,10 @@ async function bootstrap() {
     console.log('⚠️  Redis unavailable');
   }
 
-  // 3. Express app
-  const app = express();
-  app.disable('x-powered-by');
-  app.set('trust proxy', 1);
-  app.use(helmet({ contentSecurityPolicy: false }));
-  app.use(cors({ origin: clientOrigins, credentials: true }));
-  app.use(express.json({ limit: '5mb' }));
-  app.use((req, _res, next) => {
-    (req as any).requestId = req.headers['x-request-id'] || randomUUID();
-    next();
-  });
-
-  // ── Billing webhook (raw body — before JSON parser) ─────────────────
-  app.post('/api/v1/billing/webhook/razorpay', express.raw({ type: 'application/json' }));
-
-  // ── Health check ────────────────────────────────────────────────────
-  app.get('/health', (_req, res) => {
-    res.json({
-      success: true,
-      data: {
-        service: 'combined-server',
-        status: 'ok',
-        uptime: process.uptime(),
-        mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-      },
-    });
-  });
-
-  // ── API Routes ──────────────────────────────────────────────────────
+  // Remove placeholder 404
+  app._router.stack = app._router.stack.filter(
+    (layer: any) => !(layer.route && layer.route.path === '/api/*')
+  );
 
   // Auth
   const authRoutes = await import('./services/auth-service/src/routes/auth.routes');
@@ -87,97 +105,72 @@ async function bootstrap() {
   app.use('/api/v1/auth', authRoutes.default);
   app.use('/api/v1/coins', coinRoutes.default);
   app.use('/api/v1/admin', adminRoutes.default);
+  app.post('/internal/coins/consume', asyncHandler(coinsController.internalConsumeController));
+  app.post('/internal/coins/credit', asyncHandler(coinsController.internalCreditController));
+  internalApp.post('/internal/coins/consume', asyncHandler(coinsController.internalConsumeController));
+  internalApp.post('/internal/coins/credit', asyncHandler(coinsController.internalCreditController));
+  internalApp.get('/internal/ping', (_req, res) => res.json({ success: true, data: { ok: true } }));
+  console.log('  ✅ auth');
 
   // Agent
   const agentRoutes = await import('./services/agent-service/src/routes/agent.routes');
   const resumeRoutes = await import('./services/agent-service/src/routes/resume.routes');
   app.use('/api/v1/agent', agentRoutes.default);
   app.use('/api/v1/resumes', resumeRoutes.default);
+  console.log('  ✅ agent');
 
   // Interview
   const interviewRoutes = await import('./services/interview-service/src/routes/interview.routes');
   app.use('/api/v1/interviews', interviewRoutes.default);
+  console.log('  ✅ interview');
 
   // Roadmap
   const roadmapRoutes = await import('./services/roadmap-service/src/routes/roadmap.routes');
   app.use('/api/v1/roadmaps', roadmapRoutes.default);
+  console.log('  ✅ roadmap');
 
   // Billing
   const billingRoutes = await import('./services/billing-service/src/routes/billing.routes');
   const billingController = await import('./services/billing-service/src/controllers/billing.controller');
   app.use('/api/v1/billing', billingRoutes.default);
-
-  // Razorpay webhook handler
   app.post('/api/v1/billing/webhook/razorpay', (req, res, next) => {
     void billingController.webhookController(req.body as Buffer, req, res).catch(next);
   });
+  console.log('  ✅ billing');
 
-  // Internal routes (coins consume/credit for inter-service calls)
-  app.post('/internal/coins/consume', asyncHandler(coinsController.internalConsumeController));
-  app.post('/internal/coins/credit', asyncHandler(coinsController.internalCreditController));
-  app.get('/internal/ping', (_req, res) => res.json({ success: true, data: { ok: true } }));
-
-  console.log('✅ All API routes mounted');
-
-  // ── Serve frontend (client/dist) ────────────────────────────────────
+  // Serve frontend
   const clientDist = path.join(__dirname, 'client', 'dist');
-
   if (fs.existsSync(clientDist)) {
     app.use(express.static(clientDist));
-    // SPA fallback — all non-API routes serve index.html
     app.get('*', (req, res, next) => {
       if (req.path.startsWith('/api/') || req.path.startsWith('/internal/') || req.path === '/health') {
         return next();
       }
       res.sendFile(path.join(clientDist, 'index.html'));
     });
-    console.log('✅ Frontend served from client/dist');
-  } else {
-    console.log('⚠️  client/dist not found — frontend not served');
-    app.get('/', (_req, res) => {
-      res.json({ status: 'ok', service: 'combined-server (API only)' });
-    });
+    console.log('  ✅ frontend');
   }
 
-  // 404 + error handler
+  // Final error handlers
   app.use(notFoundHandler);
   app.use(errorHandler);
 
-  // ── Internal app (port 4001) for inter-service HTTP calls ───────────
-  const internalApp = express();
-  internalApp.use(express.json({ limit: '1mb' }));
-  internalApp.get('/internal/ping', (_req, res) => res.json({ success: true, data: { ok: true } }));
-  internalApp.post('/internal/coins/consume', asyncHandler(coinsController.internalConsumeController));
-  internalApp.post('/internal/coins/credit', asyncHandler(coinsController.internalCreditController));
-
-  // ── Start servers ───────────────────────────────────────────────────
-  const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`\n🚀 Server running on port ${PORT}`);
-  });
-
-  const internalServer = internalApp.listen(4001, '0.0.0.0', () => {
-    console.log(`✅ Internal server on port 4001\n`);
-  });
-
-  // ── Graceful shutdown ───────────────────────────────────────────────
-  function shutdown(signal: string) {
-    console.log(`\n🛑 ${signal} received, shutting down...`);
-    server.close(() => {
-      internalServer.close(() => {
-        mongoose.disconnect().then(() => {
-          if (redisClient) redisClient.quit();
-          process.exit(0);
-        });
-      });
-    });
-    setTimeout(() => process.exit(1), 10000).unref();
-  }
-
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
+  console.log('\n✅ All services loaded!\n');
 }
 
-bootstrap().catch((err) => {
-  console.error('❌ Failed to start:', err);
-  process.exit(1);
+loadServices().catch((err) => {
+  console.error('❌ Failed to load services:', err);
 });
+
+// Graceful shutdown
+function shutdown(signal: string) {
+  console.log(`\n🛑 ${signal}`);
+  server.close(() => {
+    internalServer.close(() => {
+      mongoose.disconnect().then(() => process.exit(0));
+    });
+  });
+  setTimeout(() => process.exit(1), 10000).unref();
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
