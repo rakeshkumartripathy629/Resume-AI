@@ -1,0 +1,8 @@
+[phases]
+  [phases.install]
+    cmds = ["npm install"]
+  [phases.build]
+    cmds = ["npm run prod:build"]
+
+[start]
+  cmd = "node scripts/prod-start.js"

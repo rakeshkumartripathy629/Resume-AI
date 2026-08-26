@@ -14,7 +14,10 @@ function required(key: string, fallback?: string): string {
 export const env = {
   port: parseInt(required('PORT', '4000'), 10),
   nodeEnv: required('NODE_ENV', 'development'),
-  clientOrigins: required('CLIENT_ORIGIN', 'http://localhost:5173')
+  clientOrigins: required(
+    'CLIENT_ORIGIN',
+    'http://localhost:5173,http://localhost:5175'
+  )
     .split(',')
     .map((o) => o.trim()),
   services: {

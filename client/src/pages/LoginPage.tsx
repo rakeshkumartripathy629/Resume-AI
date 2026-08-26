@@ -101,7 +101,7 @@ export function LoginPage() {
         </div>
 
         <p className="relative text-xs font-medium text-indigo-200">
-          Powered by LangChain + LangGraph agents
+          AI-powered resume scoring &amp; career tools
         </p>
       </div>
 

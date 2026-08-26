@@ -11,7 +11,7 @@ export function Footer() {
           </span>
         </div>
         <p className="text-xs text-slate-400">
-          © {new Date().getFullYear()} ResumeAI. Built with React, LangChain & MongoDB.
+          © {new Date().getFullYear()} ResumeAI. All rights reserved.
         </p>
       </div>
     </footer>

@@ -188,3 +188,128 @@ body {
   pointer-events: none;
   border-radius: inherit;
 }
+
+/* ── 3D Hero Animations ─────────────────────────────────────────────── */
+
+@keyframes rotate-3d {
+  0% { transform: perspective(1000px) rotateY(0deg) rotateX(5deg); }
+  50% { transform: perspective(1000px) rotateY(8deg) rotateX(-3deg); }
+  100% { transform: perspective(1000px) rotateY(0deg) rotateX(5deg); }
+}
+
+@keyframes tilt-card {
+  0% { transform: perspective(800px) rotateX(0deg) rotateY(0deg); }
+  25% { transform: perspective(800px) rotateX(2deg) rotateY(-3deg); }
+  50% { transform: perspective(800px) rotateX(-1deg) rotateY(4deg); }
+  75% { transform: perspective(800px) rotateX(3deg) rotateY(-2deg); }
+  100% { transform: perspective(800px) rotateX(0deg) rotateY(0deg); }
+}
+
+@keyframes orbit {
+  0% { transform: rotate(0deg) translateX(140px) rotate(0deg); }
+  100% { transform: rotate(360deg) translateX(140px) rotate(-360deg); }
+}
+
+@keyframes orbit-reverse {
+  0% { transform: rotate(0deg) translateX(100px) rotate(0deg); }
+  100% { transform: rotate(-360deg) translateX(100px) rotate(360deg); }
+}
+
+@keyframes morph {
+  0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+  25% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+  50% { border-radius: 50% 60% 30% 60% / 30% 50% 70% 60%; }
+  75% { border-radius: 60% 30% 60% 40% / 70% 40% 50% 60%; }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.9); opacity: 0.7; }
+  50% { transform: scale(1.05); opacity: 0.3; }
+  100% { transform: scale(0.9); opacity: 0.7; }
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  33% { transform: translateY(-12px) rotate(1deg); }
+  66% { transform: translateY(-6px) rotate(-1deg); }
+}
+
+@keyframes counter-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(-360deg); }
+}
+
+@keyframes shimmer-line {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+@keyframes particle-float {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.6; }
+  25% { transform: translate(10px, -20px) scale(1.1); opacity: 0.8; }
+  50% { transform: translate(-5px, -35px) scale(0.9); opacity: 0.4; }
+  75% { transform: translate(15px, -15px) scale(1.05); opacity: 0.7; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.15); }
+}
+
+@keyframes gradient-flow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-40px) perspective(600px) rotateY(8deg); }
+  to { opacity: 1; transform: translateX(0) perspective(600px) rotateY(0deg); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(40px) perspective(600px) rotateY(-8deg); }
+  to { opacity: 1; transform: translateX(0) perspective(600px) rotateY(0deg); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.8) perspective(500px) rotateX(10deg); }
+  to { opacity: 1; transform: scale(1) perspective(500px) rotateX(0deg); }
+}
+
+@keyframes bounce-in {
+  0% { opacity: 0; transform: scale(0.3); }
+  50% { transform: scale(1.05); }
+  70% { transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.animate-rotate-3d { animation: rotate-3d 8s ease-in-out infinite; }
+.animate-tilt { animation: tilt-card 6s ease-in-out infinite; }
+.animate-orbit { animation: orbit 12s linear infinite; }
+.animate-orbit-reverse { animation: orbit-reverse 10s linear infinite; }
+.animate-morph { animation: morph 8s ease-in-out infinite; }
+.animate-pulse-ring { animation: pulse-ring 3s ease-in-out infinite; }
+.animate-float-slow { animation: float-slow 5s ease-in-out infinite; }
+.animate-counter-rotate { animation: counter-rotate 12s linear infinite; }
+.animate-glow-pulse { animation: glow-pulse 2s ease-in-out infinite; }
+.animate-gradient-flow {
+  background-size: 200% 200%;
+  animation: gradient-flow 3s ease infinite;
+}
+.animate-slide-in-left { animation: slide-in-left 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-slide-in-right { animation: slide-in-right 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-scale-in { animation: scale-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-bounce-in { animation: bounce-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+.animate-delay-100 { animation-delay: 0.1s; }
+.animate-delay-200 { animation-delay: 0.2s; }
+.animate-delay-300 { animation-delay: 0.3s; }
+.animate-delay-400 { animation-delay: 0.4s; }
+.animate-delay-500 { animation-delay: 0.5s; }
+.animate-delay-600 { animation-delay: 0.6s; }
+.animate-delay-700 { animation-delay: 0.7s; }
+.animate-delay-800 { animation-delay: 0.8s; }
+
+.perspective-1000 { perspective: 1000px; }
+.preserve-3d { transform-style: preserve-3d; }
