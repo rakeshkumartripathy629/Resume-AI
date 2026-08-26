@@ -39,6 +39,13 @@ app.use((req, _res, next) => {
 // Billing webhook raw body (before JSON)
 app.post('/api/v1/billing/webhook/razorpay', express.raw({ type: 'application/json' }));
 
+// API placeholder while services load in background
+let routesReady = false;
+app.use('/api/*', (_req, res, next) => {
+  if (routesReady) return next();
+  res.status(503).json({ success: false, error: 'Service starting up, try again in 10 seconds' });
+});
+
 // Health — IMMEDIATE (Render port detection)
 app.get('/health', (_req, res) => {
   res.json({
@@ -146,6 +153,7 @@ async function loadServices() {
   console.log('  ✅ billing');
 
   // 404 + error (AFTER routes loaded)
+  routesReady = true;
   app.use(notFoundHandler);
   app.use(errorHandler);
 
