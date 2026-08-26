@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Root-level dependencies (for combined-server.ts)
 COPY package.json package-lock.json* ./
-RUN npm install --omit=dev
+RUN npm install --omit=dev --ignore-scripts
 
 # Service dependencies
 COPY gateway/package.json gateway/
