@@ -1,4 +1,4 @@
-import mongoose, { Schema, model, Types } from 'mongoose';
+import mongoose, { Schema, model, Types } from "mongoose";
 
 export interface IUser {
   _id: Types.ObjectId;
@@ -7,6 +7,7 @@ export interface IUser {
   displayName: string;
   photoURL: string;
   provider: string;
+  role: "user" | "admin";
   coins: number;
   lastLoginAt: Date;
   createdAt: Date;
@@ -16,14 +17,21 @@ export interface IUser {
 const userSchema = new Schema<IUser>(
   {
     firebaseUid: { type: String, required: true, unique: true, index: true },
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    displayName: { type: String, default: '' },
-    photoURL: { type: String, default: '' },
-    provider: { type: String, default: 'firebase' },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
+    displayName: { type: String, default: "" },
+    photoURL: { type: String, default: "" },
+    provider: { type: String, default: "firebase" },
+    role: { type: String, enum: ["user", "admin"], default: "user" },
     coins: { type: Number, default: 50, min: 0 },
     lastLoginAt: { type: Date, default: Date.now },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-export const User = model<IUser>('User', userSchema);
+export const User = model<IUser>("User", userSchema);

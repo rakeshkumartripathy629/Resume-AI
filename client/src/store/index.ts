@@ -8,6 +8,7 @@ import resumeListReducer from '../features/resumes/resumeListSlice'
 import roadmapReducer from '../features/roadmap/roadmapSlice'
 import billingReducer from '../features/billing/billingSlice'
 import tailorReducer from '../features/tailor/tailorSlice'
+import adminReducer from '../features/admin/adminSlice'
 
 export const store = configureStore({
   reducer: {
@@ -20,6 +21,7 @@ export const store = configureStore({
     roadmap: roadmapReducer,
     billing: billingReducer,
     tailor: tailorReducer,
+    admin: adminReducer,
   },
 })
 

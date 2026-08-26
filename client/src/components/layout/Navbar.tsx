@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ChevronDown, Coins, LayoutDashboard, LogOut, Plus, Sparkles } from 'lucide-react'
+import { ChevronDown, Coins, LayoutDashboard, LogOut, Plus, Shield, Sparkles } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { fetchCoinBalance, clearCoins } from '../../features/coins/coinsSlice'
@@ -15,7 +15,7 @@ function initials(name: string): string {
 }
 
 export function Navbar({ authed = false }: { authed?: boolean }) {
-  const { profile, logout } = useAuth()
+  const { profile, logout, isAdmin } = useAuth()
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
   const coinBalance = useAppSelector((state) => state.coins.balance)
@@ -112,6 +112,16 @@ export function Navbar({ authed = false }: { authed?: boolean }) {
                       <p className="truncate text-xs text-slate-400">{profile?.email}</p>
                     </div>
                     <div className="pt-1.5">
+                      {isAdmin && (
+                        <Link
+                          to="/admin"
+                          onClick={() => setMenuOpen(false)}
+                          className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-purple-600 transition-colors hover:bg-purple-50 hover:text-purple-700"
+                        >
+                          <Shield className="size-4" />
+                          Admin Panel
+                        </Link>
+                      )}
                       <Link
                         to="/dashboard"
                         onClick={() => setMenuOpen(false)}

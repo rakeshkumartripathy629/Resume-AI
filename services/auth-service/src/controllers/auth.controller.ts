@@ -12,6 +12,7 @@ function publicUser(doc: IUser) {
     displayName: doc.displayName,
     photoURL: doc.photoURL,
     provider: doc.provider,
+    role: doc.role,
     createdAt: doc.createdAt,
   };
 }

@@ -6,6 +6,7 @@ import { asyncHandler, errorHandler, notFoundHandler } from './middleware/errorH
 import { requestContext } from './middleware/requestContext';
 import authRoutes from './routes/auth.routes';
 import coinRoutes from './routes/coin.routes';
+import adminRoutes from './routes/admin.routes';
 import {
   internalConsumeController,
   internalCreditController,
@@ -44,6 +45,7 @@ export function createApp(): Express {
 
   app.use('/api/v1/auth', authRoutes);
   app.use('/api/v1/coins', coinRoutes);
+  app.use('/api/v1/admin', adminRoutes);
 
   // Service-to-service routes (gateway blocks /internal/* from external traffic)
   const internalRouter = Router();

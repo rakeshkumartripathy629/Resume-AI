@@ -16,6 +16,11 @@ import { TailorPage } from './pages/TailorPage'
 import { ScoreHistoryPage } from './pages/ScoreHistoryPage'
 import { TailorHistoryPage } from './pages/TailorHistoryPage'
 import { RoadmapHistoryPage } from './pages/RoadmapHistoryPage'
+import { AdminLayout } from './components/admin/AdminLayout'
+import AdminDashboard from './pages/admin/AdminDashboard'
+import AdminUsers from './pages/admin/AdminUsers'
+import AdminPayments from './pages/admin/AdminPayments'
+import AdminMonitor from './pages/admin/AdminMonitor'
 import { store } from './store'
 
 export default function App() {
@@ -121,6 +126,19 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<AdminDashboard />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="payments" element={<AdminPayments />} />
+            <Route path="monitor" element={<AdminMonitor />} />
+          </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

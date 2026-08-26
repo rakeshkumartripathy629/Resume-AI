@@ -5,6 +5,7 @@ export interface UserProfile {
   displayName: string
   photoURL: string
   provider: string
+  role: 'user' | 'admin'
   createdAt: string
 }
 

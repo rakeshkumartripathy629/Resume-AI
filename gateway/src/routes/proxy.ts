@@ -133,6 +133,7 @@ function proxyToWithRetry(prefix: string, target: string) {
 const routeTable: Array<[string, string]> = [
   ['/api/v1/auth', env.services.auth],
   ['/api/v1/coins', env.services.auth],
+  ['/api/v1/admin', env.services.auth],
   ['/api/v1/agent', env.services.agent],
   ['/api/v1/resumes', env.services.agent],
   ['/api/v1/interviews', env.services.interview],

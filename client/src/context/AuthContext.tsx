@@ -20,6 +20,7 @@ import type { UserProfile } from '../types/user'
 interface AuthContextValue {
   currentUser: FirebaseUser | null
   profile: UserProfile | null
+  isAdmin: boolean
   loading: boolean
   error: string | null
   signInWithGoogle: () => Promise<void>
@@ -110,6 +111,7 @@ async function syncSession(firebaseUser: FirebaseUser): Promise<UserProfile> {
       value={{
         currentUser,
         profile,
+        isAdmin: profile?.role === 'admin',
         loading,
         error,
         signInWithGoogle,
