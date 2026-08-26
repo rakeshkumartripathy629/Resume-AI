@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: resume-builder-api
+    name: resume-builder
     runtime: node
     plan: free
     dockerfilePath: Dockerfile

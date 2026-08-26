@@ -1,14 +1,16 @@
 /**
  * Combined single-process server for Render free tier (512MB).
- * All 6 services run in ONE Node.js process.
+ * Backend API + Frontend static files — everything in one process.
  */
 
-import express, { Router } from 'express';
+import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import mongoose from 'mongoose';
 import { createClient } from 'redis';
 import { randomUUID } from 'crypto';
+import path from 'path';
+import fs from 'fs';
 
 // ── Load env ──────────────────────────────────────────────────────────
 
@@ -19,7 +21,6 @@ const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
 const clientOrigins = CLIENT_ORIGIN.split(',').map((s) => s.trim());
 const SESSION_TTL = parseInt(process.env.SESSION_TTL_SECONDS || '604800', 10);
 
-// Set env vars so service config modules can read them
 process.env.PORT = String(PORT);
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 process.env.MONGODB_URI = MONGODB_URI;
@@ -35,7 +36,7 @@ async function bootstrap() {
   await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
   console.log('✅ MongoDB connected');
 
-  // 2. Connect Redis
+  // 2. Connect Redis (optional)
   let redisClient: ReturnType<typeof createClient> | null = null;
   try {
     redisClient = createClient({ url: REDIS_URL });
@@ -43,14 +44,14 @@ async function bootstrap() {
     await redisClient.connect();
     console.log('✅ Redis connected');
   } catch {
-    console.log('⚠️  Redis unavailable — session features degraded');
+    console.log('⚠️  Redis unavailable');
   }
 
-  // 3. Main app (port 10000) — public-facing
+  // 3. Express app
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
-  app.use(helmet());
+  app.use(helmet({ contentSecurityPolicy: false }));
   app.use(cors({ origin: clientOrigins, credentials: true }));
   app.use(express.json({ limit: '5mb' }));
   app.use((req, _res, next) => {
@@ -58,16 +59,10 @@ async function bootstrap() {
     next();
   });
 
-  // Billing webhook raw body (before JSON)
-  app.post(
-    '/api/v1/billing/webhook/razorpay',
-    express.raw({ type: 'application/json' })
-  );
+  // ── Billing webhook (raw body — before JSON parser) ─────────────────
+  app.post('/api/v1/billing/webhook/razorpay', express.raw({ type: 'application/json' }));
 
-  app.get('/', (_req, res) => {
-    res.json({ status: 'ok', service: 'combined-server', uptime: process.uptime() });
-  });
-
+  // ── Health check ────────────────────────────────────────────────────
   app.get('/health', (_req, res) => {
     res.json({
       success: true,
@@ -80,18 +75,9 @@ async function bootstrap() {
     });
   });
 
-  // 4. Internal app (port 4001) — for inter-service HTTP calls
-  const internalApp = express();
-  internalApp.use(express.json({ limit: '1mb' }));
-  internalApp.get('/internal/ping', (_req, res) => {
-    res.json({ success: true, data: { ok: true } });
-  });
+  // ── API Routes ──────────────────────────────────────────────────────
 
-  // 5. Import and mount routes
-
-  // ── Auth Service ──────────────────────────────────────
-  const authMongoose = await import('./services/auth-service/src/lib/mongoose');
-  const authRedis = await import('./services/auth-service/src/lib/redis');
+  // Auth
   const authRoutes = await import('./services/auth-service/src/routes/auth.routes');
   const coinRoutes = await import('./services/auth-service/src/routes/coin.routes');
   const adminRoutes = await import('./services/auth-service/src/routes/admin.routes');
@@ -102,39 +88,23 @@ async function bootstrap() {
   app.use('/api/v1/coins', coinRoutes.default);
   app.use('/api/v1/admin', adminRoutes.default);
 
-  // Internal coin routes (for other services to call via HTTP on port 4001)
-  internalApp.post('/internal/coins/consume', asyncHandler(coinsController.internalConsumeController));
-  internalApp.post('/internal/coins/credit', asyncHandler(coinsController.internalCreditController));
-
-  console.log('  ✅ auth routes mounted');
-
-  // ── Agent Service ─────────────────────────────────────
+  // Agent
   const agentRoutes = await import('./services/agent-service/src/routes/agent.routes');
   const resumeRoutes = await import('./services/agent-service/src/routes/resume.routes');
-
   app.use('/api/v1/agent', agentRoutes.default);
   app.use('/api/v1/resumes', resumeRoutes.default);
 
-  console.log('  ✅ agent routes mounted');
-
-  // ── Interview Service ─────────────────────────────────
+  // Interview
   const interviewRoutes = await import('./services/interview-service/src/routes/interview.routes');
-
   app.use('/api/v1/interviews', interviewRoutes.default);
 
-  console.log('  ✅ interview routes mounted');
-
-  // ── Roadmap Service ───────────────────────────────────
+  // Roadmap
   const roadmapRoutes = await import('./services/roadmap-service/src/routes/roadmap.routes');
-
   app.use('/api/v1/roadmaps', roadmapRoutes.default);
 
-  console.log('  ✅ roadmap routes mounted');
-
-  // ── Billing Service ───────────────────────────────────
+  // Billing
   const billingRoutes = await import('./services/billing-service/src/routes/billing.routes');
   const billingController = await import('./services/billing-service/src/controllers/billing.controller');
-
   app.use('/api/v1/billing', billingRoutes.default);
 
   // Razorpay webhook handler
@@ -142,22 +112,54 @@ async function bootstrap() {
     void billingController.webhookController(req.body as Buffer, req, res).catch(next);
   });
 
-  console.log('  ✅ billing routes mounted');
+  // Internal routes (coins consume/credit for inter-service calls)
+  app.post('/internal/coins/consume', asyncHandler(coinsController.internalConsumeController));
+  app.post('/internal/coins/credit', asyncHandler(coinsController.internalCreditController));
+  app.get('/internal/ping', (_req, res) => res.json({ success: true, data: { ok: true } }));
 
-  // 404 + error handler (once)
+  console.log('✅ All API routes mounted');
+
+  // ── Serve frontend (client/dist) ────────────────────────────────────
+  const clientDist = path.join(__dirname, 'client', 'dist');
+
+  if (fs.existsSync(clientDist)) {
+    app.use(express.static(clientDist));
+    // SPA fallback — all non-API routes serve index.html
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api/') || req.path.startsWith('/internal/') || req.path === '/health') {
+        return next();
+      }
+      res.sendFile(path.join(clientDist, 'index.html'));
+    });
+    console.log('✅ Frontend served from client/dist');
+  } else {
+    console.log('⚠️  client/dist not found — frontend not served');
+    app.get('/', (_req, res) => {
+      res.json({ status: 'ok', service: 'combined-server (API only)' });
+    });
+  }
+
+  // 404 + error handler
   app.use(notFoundHandler);
   app.use(errorHandler);
 
-  // 6. Start servers
+  // ── Internal app (port 4001) for inter-service HTTP calls ───────────
+  const internalApp = express();
+  internalApp.use(express.json({ limit: '1mb' }));
+  internalApp.get('/internal/ping', (_req, res) => res.json({ success: true, data: { ok: true } }));
+  internalApp.post('/internal/coins/consume', asyncHandler(coinsController.internalConsumeController));
+  internalApp.post('/internal/coins/credit', asyncHandler(coinsController.internalCreditController));
+
+  // ── Start servers ───────────────────────────────────────────────────
   const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`\n✅ Public server on port ${PORT}`);
+    console.log(`\n🚀 Server running on port ${PORT}`);
   });
 
   const internalServer = internalApp.listen(4001, '0.0.0.0', () => {
     console.log(`✅ Internal server on port 4001\n`);
   });
 
-  // 7. Graceful shutdown
+  // ── Graceful shutdown ───────────────────────────────────────────────
   function shutdown(signal: string) {
     console.log(`\n🛑 ${signal} received, shutting down...`);
     server.close(() => {
