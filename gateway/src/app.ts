@@ -26,6 +26,10 @@ export function createApp(): Express {
   app.use(express.json({ limit: '5mb' }));
   app.use(blockInternalPaths);
 
+  app.get('/', (_req, res) => {
+    res.json({ status: 'ok', service: 'gateway' });
+  });
+
   app.get('/health', (_req, res) => {
     res.json({
       success: true,
