@@ -1,0 +1,15 @@
+node_modules
+*/node_modules
+**/node_modules
+dist
+*/dist
+**/dist
+.env
+.env.local
+.env.railway
+*.log
+client/
+docker-compose.yml
+README.md
+.git
+.vercel
