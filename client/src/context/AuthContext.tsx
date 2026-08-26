@@ -9,7 +9,8 @@ import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   signInWithEmailAndPassword,
-  signInWithPopup,
+  getRedirectResult,
+  signInWithRedirect,
   signOut,
   type User as FirebaseUser,
 } from 'firebase/auth'
@@ -54,6 +55,13 @@ async function syncSession(firebaseUser: FirebaseUser): Promise<UserProfile> {
       return
     }
 
+    // Handle redirect result (after Google sign-in redirect)
+    getRedirectResult(firebaseAuth).then((result) => {
+      if (result) {
+        // Redirect completed — onAuthStateChanged will handle the rest
+      }
+    }).catch(() => {})
+
     const unsubscribe = onAuthStateChanged(firebaseAuth, async (firebaseUser) => {
       setCurrentUser(firebaseUser)
       if (firebaseUser) {
@@ -76,8 +84,7 @@ async function syncSession(firebaseUser: FirebaseUser): Promise<UserProfile> {
   async function signInWithGoogle(): Promise<void> {
     if (!firebaseAuth) throw new Error('Firebase is not configured')
     setError(null)
-    const credential = await signInWithPopup(firebaseAuth, googleProvider)
-    setProfile(await syncSession(credential.user))
+    await signInWithRedirect(firebaseAuth, googleProvider)
   }
 
   async function signInWithEmail(email: string, password: string): Promise<void> {
