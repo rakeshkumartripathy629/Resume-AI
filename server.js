@@ -92,9 +92,14 @@ const internalServer = internalApp.listen(4001, '0.0.0.0', () => {
 // ── Load services (compiled JS from dist/) ────────────────────────────
 
 async function loadServices() {
-  console.log('⏳ Connecting MongoDB...');
-  await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 15000 });
-  console.log('✅ MongoDB connected');
+  try {
+    console.log('⏳ Connecting MongoDB...');
+    await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 15000 });
+    console.log('✅ MongoDB connected');
+  } catch (err) {
+    console.error('❌ MongoDB failed:', err.message);
+    return;
+  }
 
   try {
     const redisClient = createClient({ url: REDIS_URL });
@@ -105,55 +110,65 @@ async function loadServices() {
     console.log('⚠️  Redis unavailable');
   }
 
-  // Auth
-  const authRoutes = require('./services/auth-service/dist/routes/auth.routes').default;
-  const coinRoutes = require('./services/auth-service/dist/routes/coin.routes').default;
-  const adminRoutes = require('./services/auth-service/dist/routes/admin.routes').default;
-  const coinsController = require('./services/auth-service/dist/controllers/coins.controller');
-  const { asyncHandler, notFoundHandler, errorHandler } = require('./services/auth-service/dist/middleware/errorHandler');
+  try {
+    // Auth
+    console.log('⏳ Loading auth...');
+    const authRoutes = require('./services/auth-service/dist/routes/auth.routes').default;
+    const coinRoutes = require('./services/auth-service/dist/routes/coin.routes').default;
+    const adminRoutes = require('./services/auth-service/dist/routes/admin.routes').default;
+    const coinsController = require('./services/auth-service/dist/controllers/coins.controller');
+    const { asyncHandler, notFoundHandler, errorHandler } = require('./services/auth-service/dist/middleware/errorHandler');
 
-  app.use('/api/v1/auth', authRoutes);
-  app.use('/api/v1/coins', coinRoutes);
-  app.use('/api/v1/admin', adminRoutes);
-  app.post('/internal/coins/consume', asyncHandler(coinsController.internalConsumeController));
-  app.post('/internal/coins/credit', asyncHandler(coinsController.internalCreditController));
-  internalApp.post('/internal/coins/consume', asyncHandler(coinsController.internalConsumeController));
-  internalApp.post('/internal/coins/credit', asyncHandler(coinsController.internalCreditController));
-  internalApp.get('/internal/ping', (_req, res) => res.json({ success: true, data: { ok: true } }));
-  console.log('  ✅ auth');
+    app.use('/api/v1/auth', authRoutes);
+    app.use('/api/v1/coins', coinRoutes);
+    app.use('/api/v1/admin', adminRoutes);
+    app.post('/internal/coins/consume', asyncHandler(coinsController.internalConsumeController));
+    app.post('/internal/coins/credit', asyncHandler(coinsController.internalCreditController));
+    internalApp.post('/internal/coins/consume', asyncHandler(coinsController.internalConsumeController));
+    internalApp.post('/internal/coins/credit', asyncHandler(coinsController.internalCreditController));
+    internalApp.get('/internal/ping', (_req, res) => res.json({ success: true, data: { ok: true } }));
+    console.log('  ✅ auth');
 
-  // Agent
-  const agentRoutes = require('./services/agent-service/dist/routes/agent.routes').default;
-  const resumeRoutes = require('./services/agent-service/dist/routes/resume.routes').default;
-  app.use('/api/v1/agent', agentRoutes);
-  app.use('/api/v1/resumes', resumeRoutes);
-  console.log('  ✅ agent');
+    // Agent
+    console.log('⏳ Loading agent...');
+    const agentRoutes = require('./services/agent-service/dist/routes/agent.routes').default;
+    const resumeRoutes = require('./services/agent-service/dist/routes/resume.routes').default;
+    app.use('/api/v1/agent', agentRoutes);
+    app.use('/api/v1/resumes', resumeRoutes);
+    console.log('  ✅ agent');
 
-  // Interview
-  const interviewRoutes = require('./services/interview-service/dist/routes/interview.routes').default;
-  app.use('/api/v1/interviews', interviewRoutes);
-  console.log('  ✅ interview');
+    // Interview
+    console.log('⏳ Loading interview...');
+    const interviewRoutes = require('./services/interview-service/dist/routes/interview.routes').default;
+    app.use('/api/v1/interviews', interviewRoutes);
+    console.log('  ✅ interview');
 
-  // Roadmap
-  const roadmapRoutes = require('./services/roadmap-service/dist/routes/roadmap.routes').default;
-  app.use('/api/v1/roadmaps', roadmapRoutes);
-  console.log('  ✅ roadmap');
+    // Roadmap
+    console.log('⏳ Loading roadmap...');
+    const roadmapRoutes = require('./services/roadmap-service/dist/routes/roadmap.routes').default;
+    app.use('/api/v1/roadmaps', roadmapRoutes);
+    console.log('  ✅ roadmap');
 
-  // Billing
-  const billingRoutes = require('./services/billing-service/dist/routes/billing.routes').default;
-  const billingController = require('./services/billing-service/dist/controllers/billing.controller');
-  app.use('/api/v1/billing', billingRoutes);
-  app.post('/api/v1/billing/webhook/razorpay', (req, res, next) => {
-    billingController.webhookController(req.body, req, res).catch(next);
-  });
-  console.log('  ✅ billing');
+    // Billing
+    console.log('⏳ Loading billing...');
+    const billingRoutes = require('./services/billing-service/dist/routes/billing.routes').default;
+    const billingController = require('./services/billing-service/dist/controllers/billing.controller');
+    app.use('/api/v1/billing', billingRoutes);
+    app.post('/api/v1/billing/webhook/razorpay', (req, res, next) => {
+      billingController.webhookController(req.body, req, res).catch(next);
+    });
+    console.log('  ✅ billing');
 
-  // Ready — replace placeholder with real 404/error
-  routesReady = true;
-  app.use(notFoundHandler);
-  app.use(errorHandler);
+    // Ready
+    routesReady = true;
+    app.use(notFoundHandler);
+    app.use(errorHandler);
 
-  console.log('\n✅ All services loaded!\n');
+    console.log('\n✅ All services loaded!\n');
+  } catch (err) {
+    console.error('❌ Failed to load services:', err.message);
+    console.error(err.stack);
+  }
 }
 
 loadServices().catch((err) => {
