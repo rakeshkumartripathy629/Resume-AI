@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
-import { fetchAdminPayments } from '../../features/admin/adminSlice'
-import { Loader2, Search, ChevronLeft, ChevronRight, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { fetchAdminPayments, refundPayment } from '../../features/admin/adminSlice'
+import { Loader2, Search, ChevronLeft, ChevronRight, CheckCircle, XCircle, Clock, RotateCcw } from 'lucide-react'
 
 function formatPaise(paise: number) { return `₹${(paise / 100).toLocaleString()}` }
 function formatDate(d: string) { return d ? new Date(d).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—' }
 
 function StatusBadge({ status }: { status: string }) {
-  if (status === 'paid') return <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700"><CheckCircle className="size-3" />Paid</span>
-  if (status === 'failed') return <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-600"><XCircle className="size-3" />Failed</span>
-  return <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700"><Clock className="size-3" />{status}</span>
+  if (status === 'paid') return <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700"><CheckCircle className="size-3" />Paid</span>
+  if (status === 'failed') return <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-[10px] font-bold text-red-600"><XCircle className="size-3" />Failed</span>
+  if (status === 'refunded') return <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-[10px] font-bold text-blue-600"><RotateCcw className="size-3" />Refunded</span>
+  return <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold text-amber-700"><Clock className="size-3" />{status}</span>
 }
 
 export default function AdminPayments() {
@@ -18,6 +19,7 @@ export default function AdminPayments() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState('')
+  const [refundLoading, setRefundLoading] = useState<string | null>(null)
 
   useEffect(() => {
     void dispatch(fetchAdminPayments({ page, limit: 20, status: statusFilter, search }))
@@ -29,40 +31,56 @@ export default function AdminPayments() {
     void dispatch(fetchAdminPayments({ page: 1, limit: 20, status: statusFilter, search }))
   }
 
+  async function handleRefund(id: string) {
+    if (!confirm('Refund this payment? Coins will be deducted from the user.')) return
+    setRefundLoading(id)
+    await dispatch(refundPayment(id))
+    setRefundLoading(null)
+    void dispatch(fetchAdminPayments({ page, limit: 20, status: statusFilter, search }))
+  }
+
+  const totalRevenue = payments
+    .filter((p) => p.status === 'paid')
+    .reduce((sum, p) => sum + p.amountInPaise, 0)
+  const totalRefunded = payments
+    .filter((p) => p.status === 'refunded')
+    .reduce((sum, p) => sum + p.amountInPaise, 0)
+
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="glass rounded-2xl border border-slate-100/80 p-4 shadow-sm">
+          <p className="text-xs font-bold uppercase text-slate-400">Total Revenue</p>
+          <p className="text-2xl font-extrabold text-emerald-600">{formatPaise(totalRevenue)}</p>
+        </div>
+        <div className="glass rounded-2xl border border-slate-100/80 p-4 shadow-sm">
+          <p className="text-xs font-bold uppercase text-slate-400">Refunded</p>
+          <p className="text-2xl font-extrabold text-red-500">{formatPaise(totalRefunded)}</p>
+        </div>
+        <div className="glass rounded-2xl border border-slate-100/80 p-4 shadow-sm">
+          <p className="text-xs font-bold uppercase text-slate-400">Net Revenue</p>
+          <p className="text-2xl font-extrabold text-brand-600">{formatPaise(totalRevenue - totalRefunded)}</p>
+        </div>
+      </div>
+
       <form onSubmit={handleSearch} className="flex gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search by user email…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="glass-input w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm font-medium text-slate-700 outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-500/10"
-          />
+          <input type="text" placeholder="Search by user email…" value={search} onChange={(e) => setSearch(e.target.value)}
+            className="glass-input w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm font-medium text-slate-700 outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-500/10" />
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }}
-          className="glass-input rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-500/10"
-        >
+        <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }}
+          className="glass-input rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-500/10">
           <option value="">All statuses</option>
           <option value="paid">Paid</option>
           <option value="pending">Pending</option>
           <option value="failed">Failed</option>
+          <option value="refunded">Refunded</option>
         </select>
       </form>
 
-      {loading && (
-        <div className="flex min-h-[200px] items-center justify-center">
-          <Loader2 className="size-6 animate-spin text-brand-500" />
-        </div>
-      )}
-
-      {!loading && error && (
-        <div className="glass rounded-2xl border border-red-200 bg-red-50 p-4 text-center text-sm font-medium text-red-600">{error}</div>
-      )}
+      {loading && <div className="flex min-h-[200px] items-center justify-center"><Loader2 className="size-6 animate-spin text-brand-500" /></div>}
+      {!loading && error && <div className="glass rounded-2xl border border-red-200 bg-red-50 p-4 text-center text-sm font-medium text-red-600">{error}</div>}
 
       {!loading && !error && (
         <div className="glass overflow-hidden rounded-2xl border border-slate-100/80 shadow-sm">
@@ -76,6 +94,7 @@ export default function AdminPayments() {
                   <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Coins</th>
                   <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
                   <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Date</th>
+                  <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -83,20 +102,27 @@ export default function AdminPayments() {
                   <tr key={p.id} className="border-b border-slate-50 transition-colors hover:bg-brand-50/30">
                     <td className="px-4 py-3">
                       <p className="font-semibold text-slate-800">{p.userEmail}</p>
-                      {p.userName && <p className="text-xs text-slate-500">{p.userName}</p>}
+                      {p.userName && <p className="text-xs text-slate-400">{p.userName}</p>}
                     </td>
-                    <td className="px-4 py-3 font-medium text-slate-700">{p.planId}</td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold uppercase text-slate-600">{p.planId}</span>
+                    </td>
                     <td className="px-4 py-3 font-bold text-slate-800">{formatPaise(p.amountInPaise)}</td>
                     <td className="px-4 py-3 font-semibold text-amber-600">+{p.coinAmount}</td>
                     <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
                     <td className="px-4 py-3 text-slate-500">{formatDate(p.createdAt)}</td>
+                    <td className="px-4 py-3">
+                      {p.status === 'paid' && (
+                        <button onClick={() => void handleRefund(p.id)} disabled={refundLoading === p.id}
+                          className="inline-flex items-center gap-1 rounded-lg bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-600 transition-colors hover:bg-red-100 disabled:opacity-50">
+                          {refundLoading === p.id ? <Loader2 className="size-3 animate-spin" /> : <RotateCcw className="size-3" />}
+                          Refund
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
-                {payments.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-sm font-medium text-slate-400">No payments found</td>
-                  </tr>
-                )}
+                {payments.length === 0 && <tr><td colSpan={7} className="px-4 py-12 text-center text-sm font-medium text-slate-400">No payments found</td></tr>}
               </tbody>
             </table>
           </div>
@@ -105,16 +131,10 @@ export default function AdminPayments() {
 
       {paymentsPagination && paymentsPagination.pages > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-xs font-medium text-slate-500">
-            Page {paymentsPagination.page} of {paymentsPagination.pages} · {paymentsPagination.total} payments
-          </p>
+          <p className="text-xs font-medium text-slate-500">Page {paymentsPagination.page} of {paymentsPagination.pages} · {paymentsPagination.total} payments</p>
           <div className="flex gap-2">
-            <button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="glass rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40">
-              <ChevronLeft className="size-4" />
-            </button>
-            <button disabled={page >= paymentsPagination.pages} onClick={() => setPage((p) => p + 1)} className="glass rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40">
-              <ChevronRight className="size-4" />
-            </button>
+            <button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="glass rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"><ChevronLeft className="size-4" /></button>
+            <button disabled={page >= paymentsPagination.pages} onClick={() => setPage((p) => p + 1)} className="glass rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"><ChevronRight className="size-4" /></button>
           </div>
         </div>
       )}

@@ -236,6 +236,30 @@ export const fetchAdminRoadmaps = createAsyncThunk(
   },
 );
 
+export const toggleUserRole = createAsyncThunk(
+  "admin/toggleRole",
+  async (id: string) => {
+    const { data } = await api.post(`/admin/users/${id}/toggle-role`);
+    return data.data as { id: string; role: "user" | "admin" };
+  },
+);
+
+export const deleteUser = createAsyncThunk(
+  "admin/deleteUser",
+  async (id: string) => {
+    await api.delete(`/admin/users/${id}`);
+    return id;
+  },
+);
+
+export const refundPayment = createAsyncThunk(
+  "admin/refundPayment",
+  async (id: string) => {
+    const { data } = await api.post(`/admin/payments/${id}/refund`);
+    return { id, ...(data.data as { refunded: boolean }) };
+  },
+);
+
 // ── Slice ───────────────────────────────────────────────────────────────────
 
 const adminSlice = createSlice({
@@ -315,6 +339,29 @@ const adminSlice = createSlice({
         state.loading = false;
         state.roadmaps = action.payload.items;
         state.roadmapsPagination = action.payload.pagination;
+      })
+      // Toggle role
+      .addCase(toggleUserRole.fulfilled, (state, action) => {
+        const u = state.users.find((u) => u.id === action.payload.id);
+        if (u) u.role = action.payload.role;
+        if (state.userDetail && state.userDetail.id === action.payload.id) {
+          state.userDetail.role = action.payload.role;
+        }
+      })
+      // Delete user
+      .addCase(deleteUser.fulfilled, (state, action) => {
+        state.users = state.users.filter((u) => u.id !== action.payload);
+        if (state.userDetail && state.userDetail.id === action.payload) {
+          state.userDetail = null;
+        }
+        if (state.usersPagination) {
+          state.usersPagination.total = Math.max(0, state.usersPagination.total - 1);
+        }
+      })
+      // Refund payment
+      .addCase(refundPayment.fulfilled, (state, action) => {
+        const p = state.payments.find((p) => p.id === action.payload.id);
+        if (p) p.status = 'refunded';
       })
       // Error catch-all
       .addMatcher(

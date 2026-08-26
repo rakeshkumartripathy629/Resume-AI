@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { Request, Response } from 'express';
 import { User } from '../models/user.model';
 import { CoinTransaction } from '../models/coin-transaction.model';
@@ -9,6 +10,16 @@ function parsePage(limit: number, page: number) {
   const safeLimit = Math.min(Math.max(limit || 20, 1), 100);
   const safePage = Math.max(page || 1, 1);
   return { limit: safeLimit, page: safePage, skip: (safePage - 1) * safeLimit };
+}
+
+function getCollection(name: string) {
+  const db = mongoose.connection.db;
+  if (!db) throw new HttpError(500, 'Database not connected');
+  return db.collection(name);
+}
+
+function toPlain(obj: unknown): unknown {
+  return JSON.parse(JSON.stringify(obj));
 }
 
 // ── Dashboard Stats ─────────────────────────────────────────────────────────
@@ -27,30 +38,22 @@ export async function adminStatsController(_req: Request, res: Response): Promis
     ]),
   ]);
 
-  // Revenue from payments collection (direct Mongo access since we share the DB)
-  const payments = User.db.db!.collection('payments');
-  const revenue = await payments
+  const paymentsCol = getCollection('payments');
+
+  const revenueResult = await paymentsCol
     .aggregate([
       { $match: { status: 'paid' } },
       { $group: { _id: null, totalRevenue: { $sum: '$amountInPaise' }, count: { $sum: 1 } } },
     ])
     .toArray();
+  const revenueDoc = revenueResult[0] as { totalRevenue?: number; count?: number } | undefined;
 
-  // API usage counts
-  const scores = User.db.db!.collection('scoreresults');
-  const tailors = User.db.db!.collection('tailoredresumes');
-  const interviews = User.db.db!.collection('interviews');
-  const roadmaps = User.db.db!.collection('roadmaps');
+  const scoreCount = await getCollection('scoreresults').countDocuments();
+  const tailorCount = await getCollection('tailoredresumes').countDocuments();
+  const interviewCount = await getCollection('interviews').countDocuments();
+  const roadmapCount = await getCollection('roadmaps').countDocuments();
 
-  const [scoreCount, tailorCount, interviewCount, roadmapCount] = await Promise.all([
-    scores.countDocuments(),
-    tailors.countDocuments(),
-    interviews.countDocuments(),
-    roadmaps.countDocuments(),
-  ]);
-
-  // Revenue by day (last 7 days)
-  const revenueByDay = await payments
+  const revenueByDayRaw = await paymentsCol
     .aggregate([
       { $match: { status: 'paid', paidAt: { $gte: weekAgo } } },
       {
@@ -64,14 +67,31 @@ export async function adminStatsController(_req: Request, res: Response): Promis
     ])
     .toArray();
 
+  const revenueByDay = revenueByDayRaw.map((d) => ({
+    date: d._id,
+    revenue: d.revenue,
+    count: d.count,
+  }));
+
   res.status(200).json({
     success: true,
     data: {
       users: { total: totalUsers, newToday, newThisWeek },
-      coins: { totalInCirculation: coinAgg[0]?.totalCoins ?? 0, avgPerUser: Math.round(coinAgg[0]?.avgCoins ?? 0) },
-      revenue: { totalPaise: revenue[0]?.totalRevenue ?? 0, totalPayments: revenue[0]?.count ?? 0 },
-      apiUsage: { scores, tailors, interviews, roadmaps },
-      revenueByDay: revenueByDay.map((d: any) => ({ date: d._id, revenue: d.revenue, count: d.count })),
+      coins: {
+        totalInCirculation: coinAgg[0]?.totalCoins ?? 0,
+        avgPerUser: Math.round(coinAgg[0]?.avgCoins ?? 0),
+      },
+      revenue: {
+        totalPaise: revenueDoc?.totalRevenue ?? 0,
+        totalPayments: revenueDoc?.count ?? 0,
+      },
+      apiUsage: {
+        scores: scoreCount,
+        tailors: tailorCount,
+        interviews: interviewCount,
+        roadmaps: roadmapCount,
+      },
+      revenueByDay,
     },
   });
 }
@@ -113,7 +133,7 @@ export async function adminListUsersController(req: Request, res: Response): Pro
         email: u.email,
         displayName: u.displayName,
         photoURL: u.photoURL,
-        role: u.role,
+        role: u.role ?? 'user',
         coins: u.coins,
         createdAt: u.createdAt,
         lastLoginAt: u.lastLoginAt,
@@ -143,7 +163,7 @@ export async function adminGetUserController(req: Request, res: Response): Promi
         email: user.email,
         displayName: user.displayName,
         photoURL: user.photoURL,
-        role: user.role,
+        role: user.role ?? 'user',
         coins: user.coins,
         createdAt: user.createdAt,
         lastLoginAt: user.lastLoginAt,
@@ -190,6 +210,45 @@ export async function adminAdjustCoinsController(req: Request, res: Response): P
   });
 }
 
+// ── Delete User ─────────────────────────────────────────────────────────────
+
+export async function adminDeleteUserController(req: Request, res: Response): Promise<void> {
+  const { id } = req.params;
+  const user = await User.findById(id);
+  if (!user) throw new HttpError(404, 'User not found');
+
+  if (user.role === 'admin') {
+    const adminCount = await User.countDocuments({ role: 'admin' });
+    if (adminCount <= 1) throw new HttpError(400, 'Cannot delete the last admin');
+  }
+
+  await CoinTransaction.deleteMany({ userId: user.firebaseUid });
+  await User.findByIdAndDelete(id);
+
+  res.status(200).json({ success: true, data: { deleted: true } });
+}
+
+// ── Toggle Role ─────────────────────────────────────────────────────────────
+
+export async function adminToggleRoleController(req: Request, res: Response): Promise<void> {
+  const { id } = req.params;
+  const user = await User.findById(id);
+  if (!user) throw new HttpError(404, 'User not found');
+
+  if (user.role === 'admin') {
+    const adminCount = await User.countDocuments({ role: 'admin' });
+    if (adminCount <= 1) throw new HttpError(400, 'Cannot demote the last admin');
+  }
+
+  user.role = user.role === 'admin' ? 'user' : 'admin';
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    data: { id: user._id.toString(), role: user.role },
+  });
+}
+
 // ── List Payments ───────────────────────────────────────────────────────────
 
 export async function adminListPaymentsController(req: Request, res: Response): Promise<void> {
@@ -200,33 +259,42 @@ export async function adminListPaymentsController(req: Request, res: Response): 
   const status = String(req.query.status || '').trim();
   const search = String(req.query.search || '').trim();
 
-  const payments = User.db.db!.collection('payments');
+  const paymentsCol = getCollection('payments');
   const filter: Record<string, unknown> = {};
   if (status) filter.status = status;
 
   if (search) {
     const matchingUsers = await User.find({
-      $or: [{ email: { $regex: search, $options: 'i' } }, { displayName: { $regex: search, $options: 'i' } }],
-    }).select('firebaseUid').lean();
+      $or: [
+        { email: { $regex: search, $options: 'i' } },
+        { displayName: { $regex: search, $options: 'i' } },
+      ],
+    })
+      .select('firebaseUid')
+      .lean();
     const uids = matchingUsers.map((u) => u.firebaseUid);
     filter.userId = { $in: uids };
   }
 
   const [items, total] = await Promise.all([
-    payments.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).toArray(),
-    payments.countDocuments(filter),
+    paymentsCol.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).toArray(),
+    paymentsCol.countDocuments(filter),
   ]);
 
-  // Resolve user emails
   const userIds = [...new Set(items.map((p: any) => p.userId))];
-  const users = await User.find({ firebaseUid: { $in: userIds } }).select('firebaseUid email displayName').lean();
+  const users =
+    userIds.length > 0
+      ? await User.find({ firebaseUid: { $in: userIds } })
+          .select('firebaseUid email displayName')
+          .lean()
+      : [];
   const userMap = new Map(users.map((u) => [u.firebaseUid, u]));
 
   res.status(200).json({
     success: true,
     data: {
       items: items.map((p: any) => ({
-        id: p._id.toString(),
+        id: p._id?.toString() ?? '',
         userEmail: userMap.get(p.userId)?.email ?? 'Unknown',
         userName: userMap.get(p.userId)?.displayName ?? '',
         planId: p.planId,
@@ -249,27 +317,32 @@ export async function adminListScoresController(req: Request, res: Response): Pr
     parseInt(String(req.query.page), 10) || 1
   );
 
-  const collection = User.db.db!.collection('scoreresults');
+  const col = getCollection('scoreresults');
   const [items, total] = await Promise.all([
-    collection.find().sort({ createdAt: -1 }).skip(skip).limit(limit).toArray(),
-    collection.countDocuments(),
+    col.find().sort({ createdAt: -1 }).skip(skip).limit(limit).toArray(),
+    col.countDocuments(),
   ]);
 
   const userIds = [...new Set(items.map((s: any) => s.userId))];
-  const users = await User.find({ firebaseUid: { $in: userIds } }).select('firebaseUid email displayName').lean();
+  const users =
+    userIds.length > 0
+      ? await User.find({ firebaseUid: { $in: userIds } })
+          .select('firebaseUid email displayName')
+          .lean()
+      : [];
   const userMap = new Map(users.map((u) => [u.firebaseUid, u]));
 
   res.status(200).json({
     success: true,
     data: {
       items: items.map((s: any) => ({
-        id: s._id.toString(),
+        id: s._id?.toString() ?? '',
         userEmail: userMap.get(s.userId)?.email ?? 'Unknown',
         userName: userMap.get(s.userId)?.displayName ?? '',
         jobTitle: s.jobTitle,
         company: s.company,
-        overallScore: s.result?.overallScore ?? 0,
-        verdict: s.result?.verdict ?? 'unknown',
+        overallScore: s.result?.overallScore ?? s.overallScore ?? 0,
+        verdict: s.result?.verdict ?? s.verdict ?? 'unknown',
         createdAt: s.createdAt,
       })),
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
@@ -285,27 +358,32 @@ export async function adminListTailorsController(req: Request, res: Response): P
     parseInt(String(req.query.page), 10) || 1
   );
 
-  const collection = User.db.db!.collection('tailoredresumes');
+  const col = getCollection('tailoredresumes');
   const [items, total] = await Promise.all([
-    collection.find().sort({ createdAt: -1 }).skip(skip).limit(limit).toArray(),
-    collection.countDocuments(),
+    col.find().sort({ createdAt: -1 }).skip(skip).limit(limit).toArray(),
+    col.countDocuments(),
   ]);
 
   const userIds = [...new Set(items.map((t: any) => t.userId))];
-  const users = await User.find({ firebaseUid: { $in: userIds } }).select('firebaseUid email displayName').lean();
+  const users =
+    userIds.length > 0
+      ? await User.find({ firebaseUid: { $in: userIds } })
+          .select('firebaseUid email displayName')
+          .lean()
+      : [];
   const userMap = new Map(users.map((u) => [u.firebaseUid, u]));
 
   res.status(200).json({
     success: true,
     data: {
       items: items.map((t: any) => ({
-        id: t._id.toString(),
+        id: t._id?.toString() ?? '',
         userEmail: userMap.get(t.userId)?.email ?? 'Unknown',
         userName: userMap.get(t.userId)?.displayName ?? '',
-        jobTitle: t.jobTitle,
-        company: t.company,
-        atsScore: t.atsScore ?? 0,
-        keywordCount: (t.matchedKeywords ?? []).length,
+        jobTitle: t.jobTitle ?? t.payload?.jobTitle ?? '',
+        company: t.company ?? t.payload?.company ?? '',
+        atsScore: t.atsScore ?? t.result?.atsScore ?? 0,
+        keywordCount: (t.matchedKeywords ?? t.result?.matchedKeywords ?? []).length,
         createdAt: t.createdAt,
       })),
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
@@ -321,27 +399,32 @@ export async function adminListInterviewsController(req: Request, res: Response)
     parseInt(String(req.query.page), 10) || 1
   );
 
-  const collection = User.db.db!.collection('interviews');
+  const col = getCollection('interviews');
   const [items, total] = await Promise.all([
-    collection.find().sort({ createdAt: -1 }).skip(skip).limit(limit).toArray(),
-    collection.countDocuments(),
+    col.find().sort({ createdAt: -1 }).skip(skip).limit(limit).toArray(),
+    col.countDocuments(),
   ]);
 
   const userIds = [...new Set(items.map((i: any) => i.userId))];
-  const users = await User.find({ firebaseUid: { $in: userIds } }).select('firebaseUid email displayName').lean();
+  const users =
+    userIds.length > 0
+      ? await User.find({ firebaseUid: { $in: userIds } })
+          .select('firebaseUid email displayName')
+          .lean()
+      : [];
   const userMap = new Map(users.map((u) => [u.firebaseUid, u]));
 
   res.status(200).json({
     success: true,
     data: {
       items: items.map((i: any) => ({
-        id: i._id.toString(),
+        id: i._id?.toString() ?? '',
         userEmail: userMap.get(i.userId)?.email ?? 'Unknown',
         userName: userMap.get(i.userId)?.displayName ?? '',
-        role: i.role,
-        difficulty: i.difficulty,
-        status: i.status,
-        overallScore: i.report?.overallScore ?? null,
+        role: i.role ?? i.jobRole ?? '',
+        difficulty: i.difficulty ?? 'medium',
+        status: i.status ?? 'completed',
+        overallScore: i.report?.overallScore ?? i.overallScore ?? null,
         createdAt: i.createdAt,
       })),
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
@@ -357,29 +440,67 @@ export async function adminListRoadmapsController(req: Request, res: Response): 
     parseInt(String(req.query.page), 10) || 1
   );
 
-  const collection = User.db.db!.collection('roadmaps');
+  const col = getCollection('roadmaps');
   const [items, total] = await Promise.all([
-    collection.find().sort({ createdAt: -1 }).skip(skip).limit(limit).toArray(),
-    collection.countDocuments(),
+    col.find().sort({ createdAt: -1 }).skip(skip).limit(limit).toArray(),
+    col.countDocuments(),
   ]);
 
   const userIds = [...new Set(items.map((r: any) => r.userId))];
-  const users = await User.find({ firebaseUid: { $in: userIds } }).select('firebaseUid email displayName').lean();
+  const users =
+    userIds.length > 0
+      ? await User.find({ firebaseUid: { $in: userIds } })
+          .select('firebaseUid email displayName')
+          .lean()
+      : [];
   const userMap = new Map(users.map((u) => [u.firebaseUid, u]));
 
   res.status(200).json({
     success: true,
     data: {
       items: items.map((r: any) => ({
-        id: r._id.toString(),
+        id: r._id?.toString() ?? '',
         userEmail: userMap.get(r.userId)?.email ?? 'Unknown',
         userName: userMap.get(r.userId)?.displayName ?? '',
-        targetRole: r.targetRole,
-        experienceLevel: r.experienceLevel,
-        phaseCount: (r.phases ?? []).length,
+        targetRole: r.targetRole ?? r.payload?.targetRole ?? '',
+        experienceLevel: r.experienceLevel ?? r.payload?.experienceLevel ?? '',
+        phaseCount: (r.phases ?? r.result?.phases ?? []).length,
         createdAt: r.createdAt,
       })),
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     },
   });
+}
+
+// ── Payment Refund ──────────────────────────────────────────────────────────
+
+export async function adminRefundPaymentController(req: Request, res: Response): Promise<void> {
+  const { id } = req.params;
+  const paymentsCol = getCollection('payments');
+
+  const payment = await paymentsCol.findOne({ _id: new mongoose.Types.ObjectId(id) });
+  if (!payment) throw new HttpError(404, 'Payment not found');
+  if (payment.status !== 'paid') throw new HttpError(400, 'Only paid payments can be refunded');
+
+  await paymentsCol.updateOne(
+    { _id: new mongoose.Types.ObjectId(id) },
+    { $set: { status: 'refunded', refundedAt: new Date() } }
+  );
+
+  const user = await User.findOne({ firebaseUid: payment.userId });
+  if (user && payment.coinAmount) {
+    const newBalance = Math.max(0, user.coins - payment.coinAmount);
+    user.coins = newBalance;
+    await user.save();
+
+    await CoinTransaction.create({
+      userId: user.firebaseUid,
+      action: 'admin_refund',
+      amount: -payment.coinAmount,
+      balanceAfter: newBalance,
+      meta: { reason: 'Admin refund', paymentId: id, adjustedBy: req.user?.uid },
+    });
+  }
+
+  res.status(200).json({ success: true, data: { refunded: true } });
 }
