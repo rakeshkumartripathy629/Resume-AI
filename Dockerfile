@@ -19,10 +19,10 @@ RUN cd gateway && npm install --omit=dev && cd .. \
 
 RUN npm install -g tsx
 
+COPY combined-server.ts ./
 COPY gateway/ gateway/
 COPY services/ services/
-COPY scripts/ scripts/
 
 EXPOSE 10000
 
-CMD ["node", "scripts/prod-start.js"]
+CMD ["tsx", "combined-server.ts"]
