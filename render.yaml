@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: resume-builder-api
+    runtime: node
+    plan: free
+    buildCommand: npm install && node scripts/prod-start.js
+    startCommand: node scripts/prod-start.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      # Add all env vars from .env.railway.example below
+      # Set them in Render Dashboard → Environment tab
