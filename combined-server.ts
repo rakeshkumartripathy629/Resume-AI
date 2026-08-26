@@ -58,6 +58,13 @@ const hasFrontend = fs.existsSync(clientDist);
 
 if (hasFrontend) {
   app.use(express.static(clientDist));
+  // SPA fallback — serve index.html for all non-API routes IMMEDIATELY
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/') || req.path.startsWith('/internal/') || req.path === '/health') {
+      return next();
+    }
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
   console.log('📁 Serving frontend from client/dist');
 } else {
   console.log('⚠️  client/dist not found at', clientDist);
@@ -138,15 +145,7 @@ async function loadServices() {
   });
   console.log('  ✅ billing');
 
-  // SPA fallback + 404 + error (AFTER routes loaded)
-  if (hasFrontend) {
-    app.get('*', (req, res, next) => {
-      if (req.path.startsWith('/api/') || req.path.startsWith('/internal/')) {
-        return next();
-      }
-      res.sendFile(path.join(clientDist, 'index.html'));
-    });
-  }
+  // 404 + error (AFTER routes loaded)
   app.use(notFoundHandler);
   app.use(errorHandler);
 
