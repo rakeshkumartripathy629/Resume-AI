@@ -1,15 +1,21 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import {
   AlertTriangle,
   ArrowRight,
+  BarChart3,
+  FileSearch,
   FileText,
   Lock,
   Mail,
   Mic,
+  Map,
   Settings2,
   ShieldCheck,
+  Sparkles,
+  Star,
   Target,
+  Zap,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { isFirebaseConfigured } from '../lib/firebase'
@@ -23,6 +29,163 @@ const features = [
   { icon: Mic, text: 'Mock interviews with instant feedback reports' },
   { icon: Settings2, text: 'Smart builder with role-tailored suggestions' },
 ]
+
+/* ── 3D Floating Resume Card ──────────────────────────────────────── */
+
+function FloatingResumeCard() {
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+
+  useEffect(() => {
+    function handleMouseMove(e: MouseEvent) {
+      const x = (e.clientX / window.innerWidth - 0.5) * 20
+      const y = (e.clientY / window.innerHeight - 0.5) * 20
+      setMousePos({ x, y })
+    }
+    window.addEventListener('mousemove', handleMouseMove)
+    return () => window.removeEventListener('mousemove', handleMouseMove)
+  }, [])
+
+  return (
+    <div
+      className="relative mx-auto mt-12 w-64"
+      style={{
+        transform: `perspective(1000px) rotateY(${mousePos.x * 0.3}deg) rotateX(${-mousePos.y * 0.3}deg)`,
+        transition: 'transform 0.1s ease-out',
+      }}
+    >
+      {/* Main card */}
+      <div className="glass-card relative overflow-hidden rounded-2xl p-5 shadow-2xl">
+        {/* Shimmer overlay */}
+        <div className="absolute inset-0 overflow-hidden rounded-2xl">
+          <div
+            className="absolute -inset-full bg-gradient-to-r from-transparent via-white/20 to-transparent"
+            style={{ animation: 'shimmer-line 3s ease-in-out infinite' }}
+          />
+        </div>
+
+        {/* Header */}
+        <div className="relative mb-4 flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-sm">
+            <Sparkles className="size-5 text-white" />
+          </div>
+          <div>
+            <div className="h-3 w-24 rounded-full bg-gradient-to-r from-white/60 to-white/30" />
+            <div className="mt-1.5 h-2 w-16 rounded-full bg-white/20" />
+          </div>
+        </div>
+
+        {/* Score badge */}
+        <div className="relative mb-4 flex items-center gap-3 rounded-xl bg-white/10 backdrop-blur-sm px-3 py-2.5">
+          <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/80 text-xs font-bold text-white shadow-lg shadow-emerald-500/30">
+            92
+          </div>
+          <div>
+            <p className="text-xs font-bold text-emerald-300">Excellent Match</p>
+            <div className="mt-0.5 flex gap-0.5">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Star
+                  key={i}
+                  className={`size-3 ${i <= 4 ? 'fill-amber-400 text-amber-400' : 'fill-white/20 text-white/20'}`}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Skill bars */}
+        <div className="relative space-y-2.5">
+          {[
+            { label: 'Keywords', pct: 95, color: 'from-white/60 to-white/30' },
+            { label: 'Skills', pct: 88, color: 'from-white/50 to-white/20' },
+            { label: 'Impact', pct: 78, color: 'from-white/40 to-white/15' },
+          ].map((s) => (
+            <div key={s.label}>
+              <div className="flex justify-between text-[10px] font-semibold text-white/60">
+                <span>{s.label}</span>
+                <span>{s.pct}%</span>
+              </div>
+              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className={`h-full rounded-full bg-gradient-to-r ${s.color}`}
+                  style={{ width: `${s.pct}%`, transition: 'width 1.5s ease' }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Tags */}
+        <div className="relative mt-4 flex flex-wrap gap-1.5">
+          {['React', 'Node.js', 'TypeScript'].map((kw) => (
+            <span
+              key={kw}
+              className="rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-bold text-white/70 backdrop-blur-sm"
+            >
+              {kw}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Floating orbit icons around the card */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="animate-orbit" style={{ position: 'absolute', left: '50%', top: '50%' }}>
+          <div className="flex size-9 items-center justify-center rounded-xl bg-white/20 backdrop-blur-md shadow-lg border border-white/20">
+            <Mic className="size-4 text-white" />
+          </div>
+        </div>
+        <div className="animate-orbit-reverse" style={{ position: 'absolute', left: '50%', top: '50%', animationDelay: '-3s' }}>
+          <div className="flex size-8 items-center justify-center rounded-xl bg-white/20 backdrop-blur-md shadow-lg border border-white/20">
+            <FileText className="size-4 text-white" />
+          </div>
+        </div>
+        <div className="animate-orbit" style={{ position: 'absolute', left: '50%', top: '50%', animationDelay: '-6s' }}>
+          <div className="flex size-8 items-center justify-center rounded-xl bg-white/20 backdrop-blur-md shadow-lg border border-white/20">
+            <Map className="size-4 text-white" />
+          </div>
+        </div>
+        <div className="animate-orbit-reverse" style={{ position: 'absolute', left: '50%', top: '50%', animationDelay: '-9s' }}>
+          <div className="flex size-7 items-center justify-center rounded-xl bg-white/20 backdrop-blur-md shadow-lg border border-white/20">
+            <BarChart3 className="size-3.5 text-white" />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Floating Particles ───────────────────────────────────────────── */
+
+function LoginParticles() {
+  const particles = Array.from({ length: 30 }, (_, i) => ({
+    id: i,
+    left: `${Math.random() * 100}%`,
+    top: `${Math.random() * 100}%`,
+    size: Math.random() * 4 + 1,
+    delay: Math.random() * 8,
+    duration: Math.random() * 6 + 4,
+  }))
+
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      {particles.map((p) => (
+        <div
+          key={p.id}
+          className="absolute rounded-full bg-white/20"
+          style={{
+            left: p.left,
+            top: p.top,
+            width: p.size,
+            height: p.size,
+            animation: `particle-float ${p.duration}s ease-in-out ${p.delay}s infinite`,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+/* ── Main Login Page ──────────────────────────────────────────────── */
 
 export function LoginPage() {
   const { profile, signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth()
@@ -72,42 +235,67 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-white">
-      {/* Branding panel */}
-      <div className="relative hidden w-[46%] flex-col justify-between overflow-hidden bg-gradient-to-br from-brand-700 via-accent-700 to-pink-700 p-12 lg:flex">
-        <div className="pointer-events-none absolute -left-24 -top-24 size-96 rounded-full bg-white/10 blur-[80px]" />
-        <div className="pointer-events-none absolute -bottom-32 -right-16 size-[28rem] rounded-full bg-pink-400/20 blur-[100px]" />
-        <div className="pointer-events-none absolute left-1/3 top-1/2 size-72 rounded-full bg-brand-400/20 blur-3xl" />
+    <div className="flex min-h-screen bg-slate-950">
+      {/* ── 3D Animated Left Panel ────────────────────────────────────── */}
+      <div className="relative hidden w-[46%] flex-col justify-between overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-12 lg:flex">
+        {/* Aurora background */}
+        <div className="absolute inset-0 aurora-bg opacity-30" />
 
-        <Logo light />
+        {/* Floating particles */}
+        <LoginParticles />
 
+        {/* Glowing orbs */}
+        <div className="pointer-events-none absolute -left-20 -top-20 size-80 rounded-full bg-indigo-500/30 blur-[100px] animate-glow-pulse" />
+        <div className="pointer-events-none absolute -bottom-32 -right-16 size-96 rounded-full bg-purple-500/20 blur-[120px] animate-glow-pulse" style={{ animationDelay: '1s' }} />
+        <div className="pointer-events-none absolute left-1/3 top-1/3 size-64 rounded-full bg-pink-500/15 blur-[80px] animate-glow-pulse" style={{ animationDelay: '2s' }} />
+
+        {/* Grid pattern */}
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[length:40px_40px]" />
+
+        {/* Logo */}
+        <div className="relative animate-slide-in-left">
+          <Logo light />
+        </div>
+
+        {/* Content */}
         <div className="relative">
-          <h1 className="max-w-md text-4xl font-extrabold leading-tight text-white">
+          <h1 className="max-w-md text-4xl font-extrabold leading-tight text-white animate-slide-in-left" style={{ animationDelay: '0.2s' }}>
             Land your dream job with an{' '}
-            <span className="bg-gradient-to-r from-amber-200 to-yellow-100 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-amber-200 via-yellow-200 to-orange-200 bg-clip-text text-transparent animate-text-shimmer">
               AI career copilot
             </span>
           </h1>
-          <ul className="mt-10 space-y-4">
+
+          <ul className="mt-10 space-y-4 stagger-children">
             {features.map(({ icon: Icon, text }) => (
               <li key={text} className="flex items-center gap-3.5">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/15 backdrop-blur">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/10 backdrop-blur-md border border-white/10 transition-all duration-300 hover:bg-white/20 hover:scale-110 hover:rotate-3">
                   <Icon className="size-5 text-white" />
                 </span>
-                <span className="text-sm font-medium text-indigo-50">{text}</span>
+                <span className="text-sm font-medium text-indigo-100">{text}</span>
               </li>
             ))}
           </ul>
         </div>
 
-        <p className="relative text-xs font-medium text-indigo-200">
+        {/* 3D Floating Resume Card */}
+        <div className="relative">
+          <FloatingResumeCard />
+        </div>
+
+        <p className="relative text-xs font-medium text-indigo-300/60">
           AI-powered resume scoring &amp; career tools
         </p>
       </div>
 
-      {/* Form panel */}
-      <div className="flex flex-1 items-center justify-center px-6 py-12">
-        <div className="w-full max-w-md animate-fade-in">
+      {/* ── Form Panel ────────────────────────────────────────────────── */}
+      <div className="relative flex flex-1 items-center justify-center px-6 py-12">
+        {/* Subtle background effects */}
+        <div className="pointer-events-none absolute -right-20 -top-20 size-80 rounded-full bg-indigo-500/5 blur-[100px]" />
+        <div className="pointer-events-none absolute -bottom-20 -left-20 size-64 rounded-full bg-purple-500/5 blur-[80px]" />
+
+        <div className="w-full max-w-md animate-slide-in-right">
+          {/* Mobile logo */}
           <div className="mb-8 lg:hidden">
             <Logo />
           </div>
@@ -122,7 +310,7 @@ export function LoginPage() {
           </p>
 
           {!isFirebaseConfigured && (
-            <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 animate-fade-in">
               <div className="flex gap-3">
                 <AlertTriangle className="size-5 shrink-0 text-amber-500" />
                 <div className="text-sm">
@@ -140,15 +328,16 @@ export function LoginPage() {
           )}
 
           {formError && (
-            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-3.5 text-sm font-medium text-red-600">
+            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-3.5 text-sm font-medium text-red-600 animate-shake">
               {formError}
             </div>
           )}
 
+          {/* Google Sign In */}
           <Button
             variant="outline"
             size="lg"
-            className="mt-6 w-full"
+            className="mt-6 w-full magnetic-btn"
             loading={submitting === 'google'}
             disabled={!isFirebaseConfigured || submitting !== null}
             onClick={() => void handleGoogle()}
@@ -186,6 +375,7 @@ export function LoginPage() {
             <span className="h-px flex-1 bg-slate-200" />
           </div>
 
+          {/* Email form */}
           <form onSubmit={handleEmail} className="space-y-4">
             <Input
               label="Email address"
@@ -215,7 +405,7 @@ export function LoginPage() {
             <Button
               type="submit"
               size="lg"
-              className="w-full"
+              className="w-full magnetic-btn"
               loading={submitting === 'email'}
               disabled={!isFirebaseConfigured || submitting !== null}
             >
@@ -228,7 +418,7 @@ export function LoginPage() {
             {mode === 'signin' ? "Don't have an account?" : 'Already have an account?'}{' '}
             <button
               type="button"
-              className="font-semibold text-brand-600 hover:text-brand-800 hover:underline"
+              className="font-semibold text-brand-600 hover:text-brand-800 hover:underline transition-colors"
               onClick={() => {
                 setMode(mode === 'signin' ? 'signup' : 'signin')
                 setFormError(null)

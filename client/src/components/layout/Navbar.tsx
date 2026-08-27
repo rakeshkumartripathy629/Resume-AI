@@ -51,8 +51,8 @@ export function Navbar({ authed = false }: { authed?: boolean }) {
   return (
     <header className="sticky top-0 z-40">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-3">
-        <div className="glass-strong flex h-14 items-center justify-between rounded-2xl border border-white/60 px-4 shadow-lg shadow-slate-900/5 sm:px-5">
-          <Link to={authed ? '/dashboard' : '/'} className="shrink-0">
+        <div className="glass-strong flex h-14 items-center justify-between rounded-2xl border border-white/60 px-4 shadow-lg shadow-slate-900/5 sm:px-5 animate-fade-in" style={{ animationDelay: '0.1s' }}>
+          <Link to={authed ? '/dashboard' : '/'} className="shrink-0 transition-transform duration-300 hover:scale-105">
             <Logo />
           </Link>
 
