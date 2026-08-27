@@ -40,8 +40,9 @@ export async function plansController(_req: Request, res: Response): Promise<voi
 
 export async function createOrderController(req: Request, res: Response): Promise<void> {
   const uid = requireUid(req);
-  const { planId } = (req.body ?? {}) as { planId?: string };
-  const plan = planId ? getPlan(planId) : undefined;
+  // Validation handled by zod middleware.
+  const { planId } = req.body as { planId: string };
+  const plan = getPlan(planId);
   if (!plan) {
     throw new HttpError(400, `Unknown planId. Available: ${Object.keys(COIN_PACKS).join(', ')}`);
   }
@@ -98,19 +99,16 @@ export async function createOrderController(req: Request, res: Response): Promis
 
 export async function verifyPaymentController(req: Request, res: Response): Promise<void> {
   const uid = requireUid(req);
+  // Validation handled by zod middleware.
   const {
     razorpayOrderId,
     razorpayPaymentId,
     razorpaySignature,
-  } = (req.body ?? {}) as {
-    razorpayOrderId?: string;
-    razorpayPaymentId?: string;
-    razorpaySignature?: string;
+  } = req.body as {
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
+    razorpaySignature: string;
   };
-
-  if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
-    throw new HttpError(400, 'razorpayOrderId, razorpayPaymentId and razorpaySignature are required');
-  }
 
   const payment = await Payment.findOne({ razorpayOrderId, userId: uid });
   if (!payment) throw new HttpError(404, 'Order not found');

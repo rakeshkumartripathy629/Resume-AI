@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import { isValidObjectId } from 'mongoose';
 import { env } from '../config/env';
 import { HttpError } from '../middleware/errorHandler';
 import { Roadmap } from '../models/roadmap.model';
@@ -16,27 +15,14 @@ const ROADMAP_COST = 8;
 
 export async function generateRoadmapController(req: Request, res: Response): Promise<void> {
   const uid = requireUid(req);
-  const {
-    targetRole,
-    experienceLevel = 'beginner',
-    currentSkills = [],
-  } = (req.body ?? {}) as {
-    targetRole?: string;
-    experienceLevel?: 'beginner' | 'intermediate' | 'advanced';
-    currentSkills?: unknown;
+  // Validation handled by zod middleware.
+  const { targetRole, experienceLevel, currentSkills } = req.body as {
+    targetRole: string;
+    experienceLevel: 'beginner' | 'intermediate' | 'advanced';
+    currentSkills: string[];
   };
 
-  if (!targetRole || targetRole.trim().length < 2) {
-    throw new HttpError(400, 'targetRole is required');
-  }
-
-  const skills = Array.isArray(currentSkills)
-    ? (currentSkills as unknown[])
-        .filter((s): s is string => typeof s === 'string')
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .slice(0, 30)
-    : [];
+  const skills = currentSkills.map((s) => s.trim()).filter(Boolean);
 
   const { balance } = await consumeCoins(uid, 'roadmap_generate', { targetRole });
 
@@ -87,9 +73,7 @@ export async function listMyRoadmapsController(req: Request, res: Response): Pro
 export async function getRoadmapController(req: Request, res: Response): Promise<void> {
   const uid = requireUid(req);
   const { id } = req.params;
-  if (!id || !isValidObjectId(id)) {
-    throw new HttpError(400, 'Invalid roadmap id');
-  }
+  // `id` is already validated as a 24-char hex string by zod route param middleware.
   const roadmap = await Roadmap.findOne({ _id: id, userId: uid });
   if (!roadmap) throw new HttpError(404, 'Roadmap not found');
   res.status(200).json({ success: true, data: roadmap });

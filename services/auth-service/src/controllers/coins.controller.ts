@@ -22,22 +22,23 @@ export async function balanceController(req: Request, res: Response): Promise<vo
 
 export async function transactionsController(req: Request, res: Response): Promise<void> {
   const uid = requireUid(req);
-  const page = Math.max(parseInt(String(req.query.page ?? '1'), 10) || 1, 1);
-  const limit = Math.min(Math.max(parseInt(String(req.query.limit ?? '15'), 10) || 15, 1), 50);
+  // Validated & coerced by zod paginationQuerySchema.
+  const { page, limit } = req.query as unknown as { page: number; limit: number };
   const data = await listTransactions(uid, page, limit);
   res.status(200).json({ success: true, data });
 }
 
 export async function internalConsumeController(req: Request, res: Response): Promise<void> {
-  const { uid, action, meta } = (req.body ?? {}) as {
-    uid?: string;
-    action?: string;
+  // Validation handled by zod middleware.
+  const { uid, action, meta } = req.body as {
+    uid: string;
+    action: string;
     meta?: Record<string, unknown>;
   };
-  if (!uid || !isCoinAction(action)) {
+  if (!isCoinAction(action)) {
     throw new HttpError(
       400,
-      `uid and valid action are required (one of: ${Object.keys(COIN_COSTS).join(', ')})`
+      `Invalid action (one of: ${Object.keys(COIN_COSTS).join(', ')})`
     );
   }
   const result = await consumeCoins({ uid, action, meta });
@@ -45,15 +46,13 @@ export async function internalConsumeController(req: Request, res: Response): Pr
 }
 
 export async function internalCreditController(req: Request, res: Response): Promise<void> {
-  const { uid, amount, reason, meta } = (req.body ?? {}) as {
-    uid?: string;
-    amount?: number;
-    reason?: string;
+  // Validation handled by zod middleware.
+  const { uid, amount, reason, meta } = req.body as {
+    uid: string;
+    amount: number;
+    reason: string;
     meta?: Record<string, unknown>;
   };
-  if (!uid || typeof amount !== 'number' || !reason) {
-    throw new HttpError(400, 'uid, amount and reason are required');
-  }
   const result = await creditCoins({ uid, amount, reason, meta });
   res.status(200).json({ success: true, data: result });
 }

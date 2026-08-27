@@ -18,17 +18,11 @@ export async function tailorController(req: Request, res: Response): Promise<voi
   const uid = req.user?.uid;
   if (!uid) throw new HttpError(401, 'Unauthorized');
 
-  const { resumeText, jobDescription } = (req.body ?? {}) as {
-    resumeText?: string;
-    jobDescription?: string;
+  // Validation already handled by zod middleware in route.
+  const { resumeText, jobDescription } = req.body as {
+    resumeText: string;
+    jobDescription: string;
   };
-
-  if (!resumeText || resumeText.trim().length < 80) {
-    throw new HttpError(400, 'resumeText is required (min 80 characters)');
-  }
-  if (!jobDescription || jobDescription.trim().length < 40) {
-    throw new HttpError(400, 'jobDescription is required (min 40 characters)');
-  }
 
   const { balance, cost } = await consumeCoins(uid, 'resume_tailor', {
     resumeChars: resumeText.length,
@@ -72,11 +66,8 @@ export async function listTailorsController(req: Request, res: Response): Promis
   const uid = req.user?.uid;
   if (!uid) throw new HttpError(401, 'Unauthorized');
 
-  const page = Math.max(parseInt(String(req.query.page ?? '1'), 10) || 1, 1);
-  const limit = Math.min(
-    Math.max(parseInt(String(req.query.limit ?? '10'), 10) || 10, 1),
-    50
-  );
+  // Validated & coerced by zod paginationQuerySchema.
+  const { page, limit } = req.query as unknown as { page: number; limit: number };
 
   const filter = { userId: uid };
   const [items, total] = await Promise.all([

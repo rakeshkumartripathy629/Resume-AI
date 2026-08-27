@@ -18,10 +18,8 @@ function publicUser(doc: IUser) {
 }
 
 export async function createSessionController(req: Request, res: Response): Promise<void> {
-  const { idToken } = req.body as { idToken?: string };
-  if (!idToken) {
-    throw new HttpError(400, 'idToken is required');
-  }
+  // Validation handled by zod middleware.
+  const { idToken } = req.body as { idToken: string };
 
   let decoded;
   try {

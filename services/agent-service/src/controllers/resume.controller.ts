@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import { isValidObjectId } from 'mongoose';
 import { HttpError } from '../middleware/errorHandler';
 import { Resume, ResumeContent } from '../models/resume.model';
 
@@ -12,9 +11,7 @@ function requireUid(req: Request): string {
 async function findOwnResume(req: Request) {
   const uid = requireUid(req);
   const { id } = req.params;
-  if (!id || !isValidObjectId(id)) {
-    throw new HttpError(400, 'Invalid resume id');
-  }
+  // `id` is already validated as a 24-char hex string by zod route param middleware.
   const resume = await Resume.findOne({ _id: id, userId: uid });
   if (!resume) {
     throw new HttpError(404, 'Resume not found');
@@ -43,7 +40,7 @@ export async function listResumesController(req: Request, res: Response): Promis
 
 export async function createResumeController(req: Request, res: Response): Promise<void> {
   const uid = requireUid(req);
-  const { title, content } = (req.body ?? {}) as {
+  const { title, content } = req.body as {
     title?: string;
     content?: Partial<ResumeContent>;
   };
@@ -80,7 +77,7 @@ export async function getResumeController(req: Request, res: Response): Promise<
 
 export async function updateResumeController(req: Request, res: Response): Promise<void> {
   const resume = await findOwnResume(req);
-  const { title, status, content } = (req.body ?? {}) as {
+  const { title, status, content } = req.body as {
     title?: string;
     status?: 'draft' | 'complete';
     content?: Partial<ResumeContent>;
@@ -132,9 +129,7 @@ export async function deleteResumeController(req: Request, res: Response): Promi
 export async function restoreVersionController(req: Request, res: Response): Promise<void> {
   const resume = await findOwnResume(req);
   const versionNum = parseInt(req.params.version, 10);
-  if (isNaN(versionNum) || versionNum < 1) {
-    throw new HttpError(400, 'Invalid version number');
-  }
+  // Version param already validated as positive integer by zod route param middleware.
 
   const snapshot = resume.versions.find((v) => v.version === versionNum);
   if (!snapshot) {

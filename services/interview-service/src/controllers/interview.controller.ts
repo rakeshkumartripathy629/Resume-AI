@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import { isValidObjectId } from 'mongoose';
 import { env } from '../config/env';
 import { HttpError } from '../middleware/errorHandler';
 import { Interview } from '../models/interview.model';
@@ -15,9 +14,7 @@ function requireUid(req: Request): string {
 async function findOwnInterview(req: Request) {
   const uid = requireUid(req);
   const { id } = req.params;
-  if (!id || !isValidObjectId(id)) {
-    throw new HttpError(400, 'Invalid interview id');
-  }
+  // `id` is already validated as a 24-char hex string by zod route param middleware.
   const interview = await Interview.findOne({ _id: id, userId: uid });
   if (!interview) {
     throw new HttpError(404, 'Interview not found');
@@ -46,25 +43,22 @@ function publicView(doc: Awaited<ReturnType<typeof findOwnInterview>>) {
 
 export async function startInterviewController(req: Request, res: Response): Promise<void> {
   const uid = requireUid(req);
+  // Validation handled by zod middleware.
   const {
     role,
-    difficulty = 'medium',
-    jdText = '',
-    missingSkills = [],
+    difficulty,
+    jdText,
+    missingSkills,
     roadmapId,
     questionCount,
-  } = (req.body ?? {}) as {
-    role?: string;
-    difficulty?: 'easy' | 'medium' | 'hard';
-    jdText?: string;
-    missingSkills?: string[];
+  } = req.body as {
+    role: string;
+    difficulty: 'easy' | 'medium' | 'hard';
+    jdText: string;
+    missingSkills: string[];
     roadmapId?: string;
     questionCount?: number;
   };
-
-  if (!role || role.trim().length < 2) {
-    throw new HttpError(400, 'role is required');
-  }
 
   const resolvedCount = Math.min(10, Math.max(4, questionCount ?? env.defaultQuestionCount));
 
@@ -104,8 +98,8 @@ export async function startInterviewController(req: Request, res: Response): Pro
 
 export async function listInterviewsController(req: Request, res: Response): Promise<void> {
   const uid = requireUid(req);
-  const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10) || 1);
-  const limit = Math.min(20, Math.max(1, parseInt(String(req.query.limit ?? '10'), 10) || 10));
+  // Validated & coerced by zod paginationQuerySchema.
+  const { page, limit } = req.query as unknown as { page: number; limit: number };
 
   const [docs, total] = await Promise.all([
     Interview.find({ userId: uid })
@@ -148,20 +142,14 @@ export async function submitAnswerController(req: Request, res: Response): Promi
     throw new HttpError(409, 'Interview already completed');
   }
 
-  const { questionIndex, answer } = (req.body ?? {}) as {
-    questionIndex?: number;
-    answer?: string;
+  // Validation handled by zod middleware.
+  const { questionIndex, answer } = req.body as {
+    questionIndex: number;
+    answer: string;
   };
 
-  if (
-    typeof questionIndex !== 'number' ||
-    questionIndex < 0 ||
-    questionIndex >= interview.questions.length
-  ) {
+  if (questionIndex >= interview.questions.length) {
     throw new HttpError(400, `questionIndex must be 0-${interview.questions.length - 1}`);
-  }
-  if (!answer || answer.trim().length < 10) {
-    throw new HttpError(400, 'answer is required (min 10 characters)');
   }
 
   const question = interview.questions[questionIndex];

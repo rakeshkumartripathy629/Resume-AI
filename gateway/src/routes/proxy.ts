@@ -79,6 +79,9 @@ function quickHealthCheck(target: string): Promise<boolean> {
 // ── Proxy with Retry ────────────────────────────────────────────────────────
 
 function proxyToWithRetry(prefix: string, target: string) {
+  // Buffers to replay on retry. Keyed by reqId (set on the request by requestContext middleware).
+  const bodyBuffers = new Map<string, Buffer>();
+
   return createProxyMiddleware({
     pathFilter: prefix,
     target,
@@ -87,7 +90,32 @@ function proxyToWithRetry(prefix: string, target: string) {
     timeout: 180_000,
     proxyTimeout: 180_000,
     on: {
-      proxyReq: fixRequestBody,
+      proxyReq: (proxyReq, req) => {
+        // Buffer the request body before it's consumed, so we can replay it on retry.
+        // POST/PUT/PATCH bodies are captured; GET/DELETE have no body.
+        const method = req.method?.toUpperCase();
+        if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
+          const reqId = (req as import('express').Request).requestId ?? '';
+          const chunks: Buffer[] = [];
+          const origOn = req.on.bind(req);
+
+          // Intercept 'data' events to capture body chunks
+          origOn('data', (chunk: Buffer) => {
+            chunks.push(chunk);
+          });
+
+          // Once the full body is read, store the buffer for retry
+          origOn('end', () => {
+            if (chunks.length > 0 && reqId) {
+              bodyBuffers.set(reqId, Buffer.concat(chunks));
+              // Clean up after 5 minutes to prevent memory leaks
+              setTimeout(() => bodyBuffers.get(reqId) === Buffer.concat(chunks) && bodyBuffers.delete(reqId), 300_000).unref();
+            }
+          });
+        }
+
+        fixRequestBody(proxyReq, req);
+      },
       error: (err, req, res) => {
         const serverRes = res as unknown as import('http').ServerResponse;
         if (serverRes.headersSent) return;
@@ -102,6 +130,11 @@ function proxyToWithRetry(prefix: string, target: string) {
 
         console.warn(JSON.stringify({ level: 'warn', service: 'gateway', msg: `Proxy error for ${req.url}, retrying in 2s...`, target, error: err.message }));
 
+        // Grab the buffered body for retry (if any)
+        const reqId = (req as import('express').Request).requestId ?? '';
+        const body = bodyBuffers.get(reqId);
+        bodyBuffers.delete(reqId); // consume and clean up
+
         setTimeout(() => {
           quickHealthCheck(target).then((healthy) => {
             if (healthy) {
@@ -114,6 +147,10 @@ function proxyToWithRetry(prefix: string, target: string) {
               retryReq.on('error', () => {
                 if (!serverRes.headersSent) { serverRes.writeHead(502, { 'Content-Type': 'application/json' }); serverRes.end(JSON.stringify({ success: false, error: 'Upstream still unavailable after retry' })); }
               });
+              // Replay the buffered body on retry (fixRequestBody won't work here)
+              if (body && body.length > 0) {
+                retryReq.write(body);
+              }
               retryReq.end();
             } else {
               if (!serverRes.headersSent) {

@@ -17,7 +17,8 @@
     "firebase-admin": "^13.0.0",
     "helmet": "^8.0.0",
     "ioredis": "^5.4.2",
-    "mongoose": "^8.9.5"
+    "mongoose": "^8.9.5",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

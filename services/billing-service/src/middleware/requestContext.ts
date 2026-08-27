@@ -19,7 +19,7 @@ export function requestContext(req: Request, res: Response, next: NextFunction):
     const durationMs = Date.now() - startedAt;
     const log = {
       level: 'info',
-      service: 'auth-service',
+      service: 'billing-service',
       requestId: req.requestId,
       method: req.method,
       url: req.originalUrl,

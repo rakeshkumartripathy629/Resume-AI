@@ -25,7 +25,7 @@ export function errorHandler(err: Error, req: Request, res: Response, _next: Nex
     console.error(
       JSON.stringify({
         level: 'error',
-        service: 'auth-service',
+        service: 'interview-service',
         requestId: req.requestId,
         method: req.method,
         url: req.originalUrl,

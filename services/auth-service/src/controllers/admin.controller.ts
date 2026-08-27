@@ -99,13 +99,12 @@ export async function adminStatsController(_req: Request, res: Response): Promis
 // ── List Users ──────────────────────────────────────────────────────────────
 
 export async function adminListUsersController(req: Request, res: Response): Promise<void> {
-  const { page, limit, skip } = parsePage(
-    parseInt(String(req.query.limit), 10) || 20,
-    parseInt(String(req.query.page), 10) || 1
-  );
-  const search = String(req.query.search || '').trim();
-  const sort = String(req.query.sort || 'createdAt') as string;
-  const order = req.query.order === 'asc' ? 1 : -1;
+  // Validated & coerced by zod adminPaginationQuerySchema.
+  const { page, limit, search, sort, order } = req.query as unknown as {
+    page: number; limit: number; search: string; sort: string; order: string;
+  };
+  const skip = (page - 1) * limit;
+  const orderDir = order === 'asc' ? 1 : -1;
 
   const filter: Record<string, unknown> = {};
   if (search) {
@@ -117,7 +116,7 @@ export async function adminListUsersController(req: Request, res: Response): Pro
 
   const [items, total] = await Promise.all([
     User.find(filter)
-      .sort({ [sort]: order })
+      .sort({ [sort]: orderDir })
       .skip(skip)
       .limit(limit)
       .select('email displayName photoURL role coins createdAt lastLoginAt')
@@ -181,12 +180,9 @@ export async function adminGetUserController(req: Request, res: Response): Promi
 // ── Adjust Coins ────────────────────────────────────────────────────────────
 
 export async function adminAdjustCoinsController(req: Request, res: Response): Promise<void> {
+  // Validation handled by zod middleware.
   const { id } = req.params;
-  const { amount, reason } = req.body as { amount?: number; reason?: string };
-
-  if (!amount || typeof amount !== 'number' || amount === 0) {
-    throw new HttpError(400, 'amount is required and must be a non-zero number');
-  }
+  const { amount, reason } = req.body as { amount: number; reason: string };
 
   const user = await User.findById(id);
   if (!user) throw new HttpError(404, 'User not found');
@@ -252,12 +248,11 @@ export async function adminToggleRoleController(req: Request, res: Response): Pr
 // ── List Payments ───────────────────────────────────────────────────────────
 
 export async function adminListPaymentsController(req: Request, res: Response): Promise<void> {
-  const { page, limit, skip } = parsePage(
-    parseInt(String(req.query.limit), 10) || 20,
-    parseInt(String(req.query.page), 10) || 1
-  );
-  const status = String(req.query.status || '').trim();
-  const search = String(req.query.search || '').trim();
+  // Validated & coerced by zod adminPaginationQuerySchema.
+  const { page, limit, search, status } = req.query as unknown as {
+    page: number; limit: number; search: string; status: string;
+  };
+  const skip = (page - 1) * limit;
 
   const paymentsCol = getCollection('payments');
   const filter: Record<string, unknown> = {};

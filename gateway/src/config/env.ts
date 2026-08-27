@@ -27,4 +27,10 @@ export const env = {
     roadmap: required('ROADMAP_SERVICE_URL', 'http://localhost:4004'),
     billing: required('BILLING_SERVICE_URL', 'http://localhost:4005'),
   },
+  rateLimit: {
+    windowMs: parseInt(required('RATE_LIMIT_WINDOW_MS', '60000'), 10),
+    maxGlobal: parseInt(required('RATE_LIMIT_MAX_GLOBAL', '200'), 10),
+    maxStrict: parseInt(required('RATE_LIMIT_MAX_STRICT', '15'), 10),
+    maxAuth: parseInt(required('RATE_LIMIT_MAX_AUTH', '10'), 10),
+  },
 } as const;
